@@ -25,6 +25,8 @@ The first version focuses on a **Project-level Listing Pressure Dashboard**:
 - [x] Step 6 — Add smoke tests / coding hygiene checks.
 - [x] Step 7 — Run ETL against the live local source DB and smoke-test the dashboard.
 - [x] Step 8 — Create GitHub repo and push initial commit.
+- [x] Step 9 — Add lifecycle metrics: disappeared listings, price-cut rates, and pressure scores.
+- [x] Step 10 — Add duplicate-candidate and agent-concentration analytics/views.
 
 ## Data architecture
 
@@ -78,19 +80,34 @@ Aggregated project-week metrics:
 
 - active listings
 - new listings
-- price cuts
-- median asking price / PSF
+- disappeared listings
+- price cuts and price-cut rate
+- average asking price / PSF
 - stale share
 - agent/agency counts
 - concentration proxy using top-agent share
+- duplicate-cluster counts
+- pressure score
 
 #### `district_week_metrics`
 
-Aggregated district-week metrics for market maps/tables.
+Aggregated district-week metrics for market maps/tables, including lifecycle counts and district pressure scores.
 
 #### `price_cut_events`
 
 Compact event table for drilldown into price cuts without carrying raw portal payloads.
+
+#### `disappeared_listing_events`
+
+Listings observed in one snapshot week but absent in the next observed snapshot week. This is a withdrawal/absorption proxy, not a confirmed transaction label.
+
+#### `duplicate_cluster_candidates`
+
+Heuristic groups of likely duplicate/shadow inventory using same project, bedrooms, rounded area, rounded price, and same agent. These are triage candidates, not final labels.
+
+#### `agent_project_week_metrics`
+
+Agent/project/week concentration view using retained agent IDs and licences. Agent names are intentionally absent because the lean snapshot schema does not retain them.
 
 ## Snapshot update design
 
@@ -183,8 +200,10 @@ make check
 ## Implemented dashboard views
 
 - **Overview** — district pressure table and project pressure ranking for the selected snapshot week.
-- **Project detail** — selectable project page with weekly trends for active listings, new listings, price cuts, average PSF, stale share, and top-agent share.
+- **Project detail** — selectable project page with weekly trends for active listings, new listings, disappeared listings, price cuts, average PSF, stale share, pressure score, and top-agent share.
 - **Price-cut events** — compact table of the largest observed price-cut events for the selected snapshot week.
+- **Duplicate candidates** — likely duplicate/shadow-inventory clusters for triage.
+- **Agent concentration** — project-agent concentration table using retained IDs/licences.
 
 ## Current source-data observation
 
