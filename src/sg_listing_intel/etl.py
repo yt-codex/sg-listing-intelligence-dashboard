@@ -390,6 +390,43 @@ FROM listing_week_panel
 WHERE is_price_cut = 1;
 """
 
+MARKET_WEEK_SQL = """
+CREATE TABLE market_week_metrics AS
+SELECT
+    p.snapshot_week_id,
+    MIN(p.snapshot_date) AS snapshot_date,
+    COUNT(*) AS active_listings,
+    SUM(p.is_new_this_week) AS new_listings,
+    COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
+    SUM(p.is_price_cut) AS price_cut_listings,
+    ROUND(SUM(p.is_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
+    ROUND(AVG(p.is_stale_60d), 4) AS stale_60d_share,
+    ROUND(AVG(p.is_stale_90d), 4) AS stale_90d_share,
+    ROUND(AVG(p.price_value), 2) AS avg_price,
+    ROUND(AVG(p.price_per_area_value), 2) AS avg_psf,
+    COUNT(DISTINCT p.project_uid) AS distinct_projects,
+    COUNT(DISTINCT p.district_text) AS distinct_districts,
+    COUNT(DISTINCT p.agent_id) AS distinct_agents,
+    COUNT(DISTINCT p.agency_id) AS distinct_agencies,
+    COALESCE(du.duplicate_cluster_count, 0) AS duplicate_cluster_count,
+    COALESCE(du.duplicate_candidate_listings, 0) AS duplicate_candidate_listings
+FROM listing_week_panel p
+LEFT JOIN (
+    SELECT snapshot_week_id, COUNT(*) AS disappeared_listings
+    FROM disappeared_listing_events
+    GROUP BY snapshot_week_id
+) d ON d.snapshot_week_id = p.snapshot_week_id
+LEFT JOIN (
+    SELECT
+        snapshot_week_id,
+        COUNT(*) AS duplicate_cluster_count,
+        SUM(candidate_listing_count) AS duplicate_candidate_listings
+    FROM duplicate_cluster_candidates
+    GROUP BY snapshot_week_id
+) du ON du.snapshot_week_id = p.snapshot_week_id
+GROUP BY p.snapshot_week_id;
+"""
+
 AGENT_PROJECT_SQL = """
 CREATE TABLE agent_project_week_metrics AS
 SELECT
@@ -426,6 +463,7 @@ INDEX_SQL = [
     "CREATE INDEX idx_disappeared_week_project ON disappeared_listing_events(snapshot_week_id, project_uid)",
     "CREATE INDEX idx_duplicate_week_project ON duplicate_cluster_candidates(snapshot_week_id, project_uid)",
     "CREATE INDEX idx_agent_project_week ON agent_project_week_metrics(snapshot_week_id, project_uid)",
+    "CREATE INDEX idx_market_week ON market_week_metrics(snapshot_week_id)",
 ]
 
 
@@ -449,6 +487,7 @@ def build_analytics_db(source: Path, output: Path) -> None:
         con.executescript(PROJECT_SQL)
         con.executescript(DISTRICT_SQL)
         con.executescript(PRICE_CUT_SQL)
+        con.executescript(MARKET_WEEK_SQL)
         con.executescript(AGENT_PROJECT_SQL)
         for statement in INDEX_SQL:
             con.execute(statement)

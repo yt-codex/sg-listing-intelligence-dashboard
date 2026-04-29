@@ -27,6 +27,7 @@ The first version focuses on a **Project-level Listing Pressure Dashboard**:
 - [x] Step 8 — Create GitHub repo and push initial commit.
 - [x] Step 9 — Add lifecycle metrics: disappeared listings, price-cut rates, and pressure scores.
 - [x] Step 10 — Add duplicate-candidate and agent-concentration analytics/views.
+- [x] Step 11 — Add market-wide trend and data-quality coverage views.
 
 ## Data architecture
 
@@ -104,6 +105,16 @@ Listings observed in one snapshot week but absent in the next observed snapshot 
 #### `duplicate_cluster_candidates`
 
 Heuristic groups of likely duplicate/shadow inventory using same project, bedrooms, rounded area, rounded price, and same agent. These are triage candidates, not final labels.
+
+#### `market_week_metrics`
+
+Market-wide weekly coverage table for trend charts and refresh sanity checks:
+
+- active/new/disappeared listings
+- price-cut counts and rates
+- duplicate-candidate counts
+- distinct projects/districts/agents/agencies
+- average asking price and PSF
 
 #### `agent_project_week_metrics`
 
@@ -199,11 +210,12 @@ make check
 
 ## Implemented dashboard views
 
-- **Overview** — district pressure table and project pressure ranking for the selected snapshot week.
+- **Overview** — market trend charts, district pressure table, and project pressure ranking for the selected snapshot week.
 - **Project detail** — selectable project page with weekly trends for active listings, new listings, disappeared listings, price cuts, average PSF, stale share, pressure score, and top-agent share.
 - **Price-cut events** — compact table of the largest observed price-cut events for the selected snapshot week.
 - **Duplicate candidates** — likely duplicate/shadow-inventory clusters for triage.
 - **Agent concentration** — project-agent concentration table using retained IDs/licences.
+- **Data quality** — analytics build metadata and snapshot coverage table for refresh sanity checks.
 
 ## Current source-data observation
 

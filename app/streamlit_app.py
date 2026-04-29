@@ -29,6 +29,40 @@ def get_connection(db_path: str):
 
 
 @st.cache_data(ttl=300, show_spinner=False)
+def load_market_trend(db_path: str) -> pd.DataFrame:
+    con = get_connection(db_path)
+    return read_frame(
+        con,
+        """
+        SELECT
+            snapshot_week_id,
+            snapshot_date,
+            active_listings,
+            new_listings,
+            disappeared_listings,
+            price_cut_listings,
+            ROUND(100.0 * price_cut_rate, 1) AS price_cut_rate_pct,
+            ROUND(100.0 * stale_60d_share, 1) AS stale_60d_pct,
+            avg_price,
+            avg_psf,
+            distinct_projects,
+            distinct_districts,
+            distinct_agents,
+            duplicate_cluster_count,
+            duplicate_candidate_listings
+        FROM market_week_metrics
+        ORDER BY snapshot_week_id
+        """,
+    )
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def load_etl_metadata(db_path: str) -> pd.DataFrame:
+    con = get_connection(db_path)
+    return read_frame(con, "SELECT * FROM etl_metadata")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
 def load_project_metrics(db_path: str, week: str, min_listings: int) -> pd.DataFrame:
     con = get_connection(db_path)
     return read_frame(
@@ -336,6 +370,8 @@ def main() -> None:
         min_agent_listings = st.slider("Minimum agent-project listings", 2, 50, 5)
         st.caption(f"Analytics DB: `{db_path}`")
 
+    market_trend = load_market_trend(str(db_path))
+    metadata = load_etl_metadata(str(db_path))
     district = load_district_metrics(str(db_path), week)
     projects = load_project_metrics(str(db_path), week, min_listings)
     cuts = load_price_cuts(str(db_path), week)
@@ -344,11 +380,33 @@ def main() -> None:
 
     metric_row(district)
 
-    tab_overview, tab_project, tab_events, tab_duplicates, tab_agents = st.tabs(
-        ["Overview", "Project detail", "Price-cut events", "Duplicate candidates", "Agent concentration"]
+    tab_overview, tab_project, tab_events, tab_duplicates, tab_agents, tab_quality = st.tabs(
+        [
+            "Overview",
+            "Project detail",
+            "Price-cut events",
+            "Duplicate candidates",
+            "Agent concentration",
+            "Data quality",
+        ]
     )
 
     with tab_overview:
+        st.subheader("Market trend")
+        trend_chart = market_trend.set_index("snapshot_week_id")
+        left, right = st.columns(2)
+        with left:
+            st.caption("Inventory lifecycle")
+            st.line_chart(
+                trend_chart[["active_listings", "new_listings", "disappeared_listings", "price_cut_listings"]]
+            )
+        with right:
+            st.caption("Rates and pricing")
+            st.line_chart(trend_chart[["price_cut_rate_pct", "stale_60d_pct", "avg_psf"]])
+
+        with st.expander("Market weekly metrics", expanded=False):
+            st.dataframe(market_trend, use_container_width=True, hide_index=True)
+
         st.subheader("District pressure")
         st.caption("Pressure score combines inventory scale, price-cut rate, stale share, and duplicate candidates.")
         st.dataframe(district, use_container_width=True, hide_index=True)
@@ -377,6 +435,14 @@ def main() -> None:
         st.subheader("Agent concentration by project")
         st.caption("Agent IDs are retained; names are not retained in the lean snapshot schema.")
         st.dataframe(agents, use_container_width=True, hide_index=True)
+
+    with tab_quality:
+        st.subheader("Analytics build metadata")
+        st.dataframe(metadata, use_container_width=True, hide_index=True)
+
+        st.subheader("Snapshot coverage")
+        st.caption("Use this to spot stale or unexpectedly thin snapshots after refreshes.")
+        st.dataframe(market_trend, use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
