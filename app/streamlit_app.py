@@ -142,9 +142,10 @@ def load_price_cuts(db_path: str, week: str) -> pd.DataFrame:
             price_change_abs,
             ROUND(100.0 * price_change_pct, 2) AS price_change_pct,
             price_per_area_value,
-            age_days
+            age_days,
+            quality_flag
         FROM price_cut_events
-        WHERE snapshot_week_id = ?
+        WHERE snapshot_week_id = ? AND quality_flag = 'ok'
         ORDER BY price_change_pct ASC
         LIMIT 100
         """,
@@ -227,7 +228,7 @@ def load_project_cut_events(db_path: str, project_uid: str) -> pd.DataFrame:
             price_per_area_value,
             age_days
         FROM price_cut_events
-        WHERE project_uid = ?
+        WHERE project_uid = ? AND quality_flag = 'ok'
         ORDER BY snapshot_week_id DESC, price_change_pct ASC
         LIMIT 100
         """,

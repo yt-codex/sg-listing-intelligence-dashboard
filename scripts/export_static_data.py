@@ -84,6 +84,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
                         ORDER BY price_change_pct ASC
                     ) AS rn
                 FROM price_cut_events
+                WHERE quality_flag = 'ok'
             )
             SELECT *
             FROM ranked

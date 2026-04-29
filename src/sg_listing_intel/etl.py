@@ -388,7 +388,15 @@ SELECT
     price_per_area_value,
     age_days,
     agent_id,
-    agency_id
+    agency_id,
+    CASE
+        WHEN listing_type = 'RENT'
+            AND COALESCE(bedrooms, 0) = 0
+            AND COALESCE(floor_area_sqft, 0) <= 250
+            AND price_change_pct <= -0.4
+        THEN 'possible_room_rent_basis_change'
+        ELSE 'ok'
+    END AS quality_flag
 FROM listing_week_panel
 WHERE is_price_cut = 1;
 """

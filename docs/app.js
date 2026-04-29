@@ -241,7 +241,7 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260430-0224", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260430-0238", { cache: "no-store" });
   data = await res.json();
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");
