@@ -24,7 +24,7 @@ The first version focuses on a **Project-level Listing Pressure Dashboard**:
 - [x] Step 5 — Implement light dashboard frontend that queries analytics tables only.
 - [x] Step 6 — Add smoke tests / coding hygiene checks.
 - [x] Step 7 — Run ETL against the live local source DB and smoke-test the dashboard.
-- [ ] Step 8 — Create GitHub repo and push initial commit.
+- [x] Step 8 — Create GitHub repo and push initial commit.
 
 ## Data architecture
 
