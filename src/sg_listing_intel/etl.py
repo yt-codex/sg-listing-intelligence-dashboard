@@ -61,7 +61,7 @@ WITH search_dedup AS (
             AS INTEGER
         ) AS age_days,
         LAG(s.price_value) OVER (
-            PARTITION BY s.listing_id
+            PARTITION BY s.listing_id, s.listing_type
             ORDER BY s.snapshot_week_id
         ) AS prior_price_value
     FROM search_dedup s
@@ -80,7 +80,7 @@ WITH search_dedup AS (
             ELSE 0
         END AS is_price_cut,
         CASE
-            WHEN snapshot_week_id = MIN(snapshot_week_id) OVER (PARTITION BY listing_id) THEN 1
+            WHEN snapshot_week_id = MIN(snapshot_week_id) OVER (PARTITION BY listing_id, listing_type) THEN 1
             ELSE 0
         END AS is_new_this_week,
         CASE WHEN age_days >= 60 THEN 1 ELSE 0 END AS is_stale_60d,
@@ -107,6 +107,7 @@ SELECT
     next_week.snapshot_week_id AS snapshot_week_id,
     next_week.snapshot_date AS snapshot_date,
     prev.listing_id,
+    prev.listing_type,
     prev.project_uid,
     prev.project_name,
     prev.district_code,
@@ -127,6 +128,7 @@ JOIN snapshot_week next_week
 LEFT JOIN listing_week_panel current
     ON current.snapshot_week_id = next_week.snapshot_week_id
     AND current.listing_id = prev.listing_id
+    AND current.listing_type = prev.listing_type
 WHERE current.listing_id IS NULL;
 """
 
@@ -372,6 +374,7 @@ SELECT
     snapshot_week_id,
     snapshot_date,
     listing_id,
+    listing_type,
     project_uid,
     project_name,
     district_text,

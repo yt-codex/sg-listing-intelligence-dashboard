@@ -132,6 +132,7 @@ def load_price_cuts(db_path: str, week: str) -> pd.DataFrame:
         con,
         """
         SELECT
+            listing_type,
             project_name,
             district_text,
             bedrooms,
@@ -216,6 +217,7 @@ def load_project_cut_events(db_path: str, project_uid: str) -> pd.DataFrame:
         """
         SELECT
             snapshot_week_id,
+            listing_type,
             bedrooms,
             floor_area_sqft,
             prior_price_value,

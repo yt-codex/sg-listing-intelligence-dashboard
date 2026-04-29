@@ -187,6 +187,7 @@ function renderProjectDetail() {
 
 function renderEventTables() {
   table("cutsTable", byWeek(data.priceCuts), [
+    { key: "listing_type", label: "Type" },
     { key: "project_name", label: "Project" },
     { key: "district_text", label: "District" },
     { key: "bedrooms", label: "Beds", num: true, format: fmtNum },
@@ -240,7 +241,7 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260430-0212", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260430-0224", { cache: "no-store" });
   data = await res.json();
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");
