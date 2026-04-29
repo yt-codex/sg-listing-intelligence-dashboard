@@ -100,12 +100,24 @@ The dashboard is designed for future weekly snapshot updates:
 2. Run the ETL:
 
 ```bash
+make refresh
+```
+
+Equivalent explicit command:
+
+```bash
 python -m sg_listing_intel.etl \
   --source ../propertyguru-sg-weekly-snapshots-prod-20260403-125756/data/state/propertyguru.sqlite \
   --output data/analytics/listing_intel.sqlite
 ```
 
 3. Dashboard reads the refreshed analytics DB:
+
+```bash
+make dashboard
+```
+
+Equivalent explicit command:
 
 ```bash
 streamlit run app/streamlit_app.py -- --db data/analytics/listing_intel.sqlite
@@ -165,8 +177,14 @@ The current ETL rebuilds analytics tables from source for correctness and simpli
 python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
-pytest
+make check
 ```
+
+## Implemented dashboard views
+
+- **Overview** — district pressure table and project pressure ranking for the selected snapshot week.
+- **Project detail** — selectable project page with weekly trends for active listings, new listings, price cuts, average PSF, stale share, and top-agent share.
+- **Price-cut events** — compact table of the largest observed price-cut events for the selected snapshot week.
 
 ## Current source-data observation
 

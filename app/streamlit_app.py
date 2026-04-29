@@ -35,6 +35,7 @@ def load_project_metrics(db_path: str, week: str, min_listings: int) -> pd.DataF
         con,
         """
         SELECT
+            project_uid,
             project_name,
             district_text,
             region_text,
@@ -107,6 +108,83 @@ def load_price_cuts(db_path: str, week: str) -> pd.DataFrame:
     )
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def load_project_options(db_path: str, min_listings: int) -> pd.DataFrame:
+    con = get_connection(db_path)
+    return read_frame(
+        con,
+        """
+        WITH latest_project AS (
+            SELECT *
+            FROM project_week_metrics
+            WHERE snapshot_week_id = (SELECT MAX(snapshot_week_id) FROM project_week_metrics)
+        )
+        SELECT
+            project_uid,
+            project_name,
+            district_text,
+            active_listings,
+            price_cut_listings
+        FROM latest_project
+        WHERE project_uid IS NOT NULL AND active_listings >= ?
+        ORDER BY active_listings DESC, project_name
+        LIMIT 500
+        """,
+        (min_listings,),
+    )
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def load_project_trend(db_path: str, project_uid: str) -> pd.DataFrame:
+    con = get_connection(db_path)
+    return read_frame(
+        con,
+        """
+        SELECT
+            snapshot_week_id,
+            snapshot_date,
+            active_listings,
+            new_listings,
+            price_cut_listings,
+            ROUND(100.0 * stale_60d_share, 1) AS stale_60d_pct,
+            avg_price,
+            avg_psf,
+            distinct_agents,
+            distinct_agencies,
+            ROUND(100.0 * top_agent_share, 1) AS top_agent_pct
+        FROM project_week_metrics
+        WHERE project_uid = ?
+        ORDER BY snapshot_week_id
+        """,
+        (project_uid,),
+    )
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def load_project_cut_events(db_path: str, project_uid: str) -> pd.DataFrame:
+    con = get_connection(db_path)
+    return read_frame(
+        con,
+        """
+        SELECT
+            snapshot_week_id,
+            bedrooms,
+            floor_area_sqft,
+            prior_price_value,
+            price_value,
+            price_change_abs,
+            ROUND(100.0 * price_change_pct, 2) AS price_change_pct,
+            price_per_area_value,
+            age_days
+        FROM price_cut_events
+        WHERE project_uid = ?
+        ORDER BY snapshot_week_id DESC, price_change_pct ASC
+        LIMIT 100
+        """,
+        (project_uid,),
+    )
+
+
 def metric_row(df: pd.DataFrame) -> None:
     total_active = int(df["active_listings"].sum()) if not df.empty else 0
     total_new = int(df["new_listings"].sum()) if not df.empty else 0
@@ -118,6 +196,50 @@ def metric_row(df: pd.DataFrame) -> None:
     c2.metric("New listings", f"{total_new:,}")
     c3.metric("Price cuts", f"{total_cuts:,}")
     c4.metric("Avg stale share", f"{avg_stale:.1f}%")
+
+
+def render_project_detail(db_path: str, min_listings: int) -> None:
+    st.subheader("Project detail")
+    options = load_project_options(db_path, min_listings)
+    if options.empty:
+        st.info("No projects match the current minimum-listing threshold.")
+        return
+
+    labels = {
+        f"{row.project_name} — {row.district_text} "
+        f"({int(row.active_listings):,} active, {int(row.price_cut_listings):,} cuts)": row.project_uid
+        for row in options.itertuples(index=False)
+    }
+    selected_label = st.selectbox("Project", list(labels.keys()))
+    project_uid = labels[selected_label]
+
+    trend = load_project_trend(db_path, project_uid)
+    cuts = load_project_cut_events(db_path, project_uid)
+    if trend.empty:
+        st.info("No trend rows for this project.")
+        return
+
+    latest = trend.iloc[-1]
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Latest active", f"{int(latest.active_listings):,}")
+    c2.metric("Latest price cuts", f"{int(latest.price_cut_listings):,}")
+    c3.metric("Latest avg PSF", f"{latest.avg_psf:,.0f}" if pd.notna(latest.avg_psf) else "n/a")
+    c4.metric("Latest stale share", f"{latest.stale_60d_pct:.1f}%")
+
+    chart_df = trend.set_index("snapshot_week_id")
+    left, right = st.columns(2)
+    with left:
+        st.caption("Listing pressure")
+        st.line_chart(chart_df[["active_listings", "new_listings", "price_cut_listings"]])
+    with right:
+        st.caption("Pricing and stale share")
+        st.line_chart(chart_df[["avg_psf", "stale_60d_pct", "top_agent_pct"]])
+
+    with st.expander("Project weekly metrics", expanded=False):
+        st.dataframe(trend, use_container_width=True, hide_index=True)
+
+    st.caption("Recent project price-cut events")
+    st.dataframe(cuts, use_container_width=True, hide_index=True)
 
 
 def main() -> None:
@@ -147,16 +269,25 @@ def main() -> None:
 
     metric_row(district)
 
-    st.subheader("District pressure")
-    st.dataframe(district, use_container_width=True, hide_index=True)
+    tab_overview, tab_project, tab_events = st.tabs(
+        ["Overview", "Project detail", "Price-cut events"]
+    )
 
-    st.subheader("Project pressure ranking")
-    st.caption("Sorted by price-cut count, then active listings. Limited to top 200 rows.")
-    st.dataframe(projects, use_container_width=True, hide_index=True)
+    with tab_overview:
+        st.subheader("District pressure")
+        st.dataframe(district, use_container_width=True, hide_index=True)
 
-    st.subheader("Largest price-cut events")
-    st.caption("Compact event view; raw listing payloads are intentionally excluded.")
-    st.dataframe(cuts, use_container_width=True, hide_index=True)
+        st.subheader("Project pressure ranking")
+        st.caption("Sorted by price-cut count, then active listings. Limited to top 200 rows.")
+        st.dataframe(projects, use_container_width=True, hide_index=True)
+
+    with tab_project:
+        render_project_detail(str(db_path), min_listings)
+
+    with tab_events:
+        st.subheader("Largest price-cut events")
+        st.caption("Compact event view; raw listing payloads are intentionally excluded.")
+        st.dataframe(cuts, use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
