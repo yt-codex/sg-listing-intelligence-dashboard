@@ -39,6 +39,8 @@ h3 { margin: 18px 0 10px; font-size: 15px; }
 .subtle { color: var(--muted); font-size: 14px; }
 
 label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.header-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+
 select {
   min-width: 220px;
   border: 1px solid var(--line);

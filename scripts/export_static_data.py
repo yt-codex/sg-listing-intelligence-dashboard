@@ -43,7 +43,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
                 SELECT
                     *,
                     ROW_NUMBER() OVER (
-                        PARTITION BY snapshot_week_id
+                        PARTITION BY snapshot_week_id, listing_type
                         ORDER BY pressure_score DESC, active_listings DESC
                     ) AS rn
                 FROM project_week_metrics
@@ -80,7 +80,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
                 SELECT
                     *,
                     ROW_NUMBER() OVER (
-                        PARTITION BY snapshot_week_id
+                        PARTITION BY snapshot_week_id, listing_type
                         ORDER BY price_change_pct ASC
                     ) AS rn
                 FROM price_cut_events
@@ -100,7 +100,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
                 SELECT
                     *,
                     ROW_NUMBER() OVER (
-                        PARTITION BY snapshot_week_id
+                        PARTITION BY snapshot_week_id, listing_type
                         ORDER BY candidate_listing_count DESC, project_name
                     ) AS rn
                 FROM duplicate_cluster_candidates
@@ -119,7 +119,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
                 SELECT
                     *,
                     ROW_NUMBER() OVER (
-                        PARTITION BY snapshot_week_id
+                        PARTITION BY snapshot_week_id, listing_type
                         ORDER BY active_listings DESC, price_cut_listings DESC
                     ) AS rn
                 FROM agent_project_week_metrics

@@ -3,6 +3,7 @@ const money = new Intl.NumberFormat("en-SG", { maximumFractionDigits: 0 });
 let data;
 let charts = {};
 let selectedWeek;
+let selectedType = "SALE";
 
 function n(value) {
   return value === null || value === undefined || Number.isNaN(Number(value)) ? 0 : Number(value);
@@ -19,7 +20,7 @@ function metric(label, value) {
 }
 
 function byWeek(rows) {
-  return rows.filter((row) => row.snapshot_week_id === selectedWeek);
+  return rows.filter((row) => row.snapshot_week_id === selectedWeek && (!row.listing_type || row.listing_type === selectedType));
 }
 
 function destroyChart(id) {
@@ -88,7 +89,7 @@ function setupTabs() {
 }
 
 function renderMetrics() {
-  const row = data.market.find((r) => r.snapshot_week_id === selectedWeek) || {};
+  const row = data.market.find((r) => r.snapshot_week_id === selectedWeek && r.listing_type === selectedType) || {};
   document.getElementById("metricCards").innerHTML = [
     metric("Active listings", fmt.format(n(row.active_listings))),
     metric("New", fmt.format(n(row.new_listings))),
@@ -99,17 +100,18 @@ function renderMetrics() {
 }
 
 function renderOverview() {
-  const labels = data.market.map((r) => r.snapshot_week_id);
+  const marketRows = data.market.filter((r) => r.listing_type === selectedType);
+  const labels = marketRows.map((r) => r.snapshot_week_id);
   lineChart("lifecycleChart", labels, [
-    { label: "Active", data: data.market.map((r) => n(r.active_listings)) },
-    { label: "New", data: data.market.map((r) => n(r.new_listings)) },
-    { label: "Disappeared", data: data.market.map((r) => n(r.disappeared_listings)) },
-    { label: "Price cuts", data: data.market.map((r) => n(r.price_cut_listings)) },
+    { label: "Active", data: marketRows.map((r) => n(r.active_listings)) },
+    { label: "New", data: marketRows.map((r) => n(r.new_listings)) },
+    { label: "Disappeared", data: marketRows.map((r) => n(r.disappeared_listings)) },
+    { label: "Price cuts", data: marketRows.map((r) => n(r.price_cut_listings)) },
   ]);
   lineChart("pricingChart", labels, [
-    { label: "Price-cut rate %", data: data.market.map((r) => n(r.price_cut_rate) * 100) },
-    { label: "Stale 60d %", data: data.market.map((r) => n(r.stale_60d_share) * 100) },
-    { label: "Avg PSF", data: data.market.map((r) => n(r.avg_psf)) },
+    { label: "Price-cut rate %", data: marketRows.map((r) => n(r.price_cut_rate) * 100) },
+    { label: "Stale 60d %", data: marketRows.map((r) => n(r.stale_60d_share) * 100) },
+    { label: "Avg PSF", data: marketRows.map((r) => n(r.avg_psf)) },
   ]);
 
   table("districtTable", byWeek(data.districts), [
@@ -150,7 +152,7 @@ function setupProjectSelect() {
 
 function renderProjectDetail() {
   const projectUid = document.getElementById("projectSelect").value;
-  const trend = data.projectTrends.filter((r) => r.project_uid === projectUid);
+  const trend = data.projectTrends.filter((r) => r.project_uid === projectUid && r.listing_type === selectedType);
   if (!trend.length) return;
   const latest = trend[trend.length - 1];
   document.getElementById("projectCards").innerHTML = [
@@ -223,6 +225,7 @@ function renderEventTables() {
 
   table("metadataTable", [data.metadata], Object.keys(data.metadata).map((key) => ({ key, label: key })));
   table("coverageTable", data.market, [
+    { key: "listing_type", label: "Type" },
     { key: "snapshot_week_id", label: "Week" },
     { key: "active_listings", label: "Active", num: true, format: fmtNum },
     { key: "new_listings", label: "New", num: true, format: fmtNum },
@@ -242,14 +245,20 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260430-0245", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260430-0302", { cache: "no-store" });
   data = await res.json();
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");
   weekSelect.innerHTML = data.weeks.map((w) => `<option value="${w.snapshot_week_id}">${w.snapshot_week_id}</option>`).join("");
   weekSelect.value = selectedWeek;
+  const typeSelect = document.getElementById("typeSelect");
+  typeSelect.value = selectedType;
   weekSelect.addEventListener("change", () => {
     selectedWeek = weekSelect.value;
+    renderAll();
+  });
+  typeSelect.addEventListener("change", () => {
+    selectedType = typeSelect.value;
     renderAll();
   });
   renderAll();
