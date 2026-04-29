@@ -29,6 +29,7 @@ The first version focuses on a **Project-level Listing Pressure Dashboard**:
 - [x] Step 10 — Add duplicate-candidate and agent-concentration analytics/views.
 - [x] Step 11 — Add market-wide trend and data-quality coverage views.
 - [x] Step 12 — Separate sale/rent segments across market, district, project, duplicate, and agent views.
+- [x] Step 13 — Add URA-style property segment filters: private non-landed, HDB, and private landed.
 
 ## Data architecture
 
@@ -230,7 +231,7 @@ Then open `http://127.0.0.1:8513`.
 
 ## Implemented dashboard views
 
-- **Overview** — sale/rent-segmented market trend charts, district pressure table, and project pressure ranking for the selected snapshot week.
+- **Overview** — sale/rent and property-segmented market trend charts, district pressure table, and project pressure ranking for the selected snapshot week.
 - **Project detail** — selectable project page with weekly trends for active listings, new listings, disappeared listings, price cuts, average PSF, stale share, pressure score, and top-agent share.
 - **Price-cut events** — compact table of the largest observed price-cut events for the selected snapshot week.
 - **Duplicate candidates** — likely duplicate/shadow-inventory clusters for triage.

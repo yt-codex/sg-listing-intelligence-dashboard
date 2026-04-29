@@ -4,6 +4,7 @@ let data;
 let charts = {};
 let selectedWeek;
 let selectedType = "SALE";
+let selectedSegment = "PRIVATE_NON_LANDED";
 
 function n(value) {
   return value === null || value === undefined || Number.isNaN(Number(value)) ? 0 : Number(value);
@@ -19,8 +20,13 @@ function metric(label, value) {
   return `<article class="metric"><div class="label">${label}</div><div class="value">${value}</div></article>`;
 }
 
+function matchesSegment(row) {
+  return (!row.listing_type || row.listing_type === selectedType)
+    && (!row.property_segment || row.property_segment === selectedSegment);
+}
+
 function byWeek(rows) {
-  return rows.filter((row) => row.snapshot_week_id === selectedWeek && (!row.listing_type || row.listing_type === selectedType));
+  return rows.filter((row) => row.snapshot_week_id === selectedWeek && matchesSegment(row));
 }
 
 function destroyChart(id) {
@@ -89,7 +95,7 @@ function setupTabs() {
 }
 
 function renderMetrics() {
-  const row = data.market.find((r) => r.snapshot_week_id === selectedWeek && r.listing_type === selectedType) || {};
+  const row = data.market.find((r) => r.snapshot_week_id === selectedWeek && r.listing_type === selectedType && r.property_segment === selectedSegment) || {};
   document.getElementById("metricCards").innerHTML = [
     metric("Active listings", fmt.format(n(row.active_listings))),
     metric("New", fmt.format(n(row.new_listings))),
@@ -100,7 +106,7 @@ function renderMetrics() {
 }
 
 function renderOverview() {
-  const marketRows = data.market.filter((r) => r.listing_type === selectedType);
+  const marketRows = data.market.filter((r) => r.listing_type === selectedType && r.property_segment === selectedSegment);
   const labels = marketRows.map((r) => r.snapshot_week_id);
   lineChart("lifecycleChart", labels, [
     { label: "Active", data: marketRows.map((r) => n(r.active_listings)) },
@@ -146,13 +152,13 @@ function setupProjectSelect() {
   const select = document.getElementById("projectSelect");
   const latestRows = byWeek(data.projects).filter((r) => r.project_uid);
   select.innerHTML = latestRows.map((r) => `<option value="${r.project_uid}">${projectLabel(r)}</option>`).join("");
-  select.addEventListener("change", renderProjectDetail);
+  select.onchange = renderProjectDetail;
   renderProjectDetail();
 }
 
 function renderProjectDetail() {
   const projectUid = document.getElementById("projectSelect").value;
-  const trend = data.projectTrends.filter((r) => r.project_uid === projectUid && r.listing_type === selectedType);
+  const trend = data.projectTrends.filter((r) => r.project_uid === projectUid && r.listing_type === selectedType && r.property_segment === selectedSegment);
   if (!trend.length) return;
   const latest = trend[trend.length - 1];
   document.getElementById("projectCards").innerHTML = [
@@ -226,6 +232,7 @@ function renderEventTables() {
   table("metadataTable", [data.metadata], Object.keys(data.metadata).map((key) => ({ key, label: key })));
   table("coverageTable", data.market, [
     { key: "listing_type", label: "Type" },
+    { key: "property_segment", label: "Segment" },
     { key: "snapshot_week_id", label: "Week" },
     { key: "active_listings", label: "Active", num: true, format: fmtNum },
     { key: "new_listings", label: "New", num: true, format: fmtNum },
@@ -245,20 +252,26 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260430-0302", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260430-0316", { cache: "no-store" });
   data = await res.json();
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");
   weekSelect.innerHTML = data.weeks.map((w) => `<option value="${w.snapshot_week_id}">${w.snapshot_week_id}</option>`).join("");
   weekSelect.value = selectedWeek;
   const typeSelect = document.getElementById("typeSelect");
+  const segmentSelect = document.getElementById("segmentSelect");
   typeSelect.value = selectedType;
+  segmentSelect.value = selectedSegment;
   weekSelect.addEventListener("change", () => {
     selectedWeek = weekSelect.value;
     renderAll();
   });
   typeSelect.addEventListener("change", () => {
     selectedType = typeSelect.value;
+    renderAll();
+  });
+  segmentSelect.addEventListener("change", () => {
+    selectedSegment = segmentSelect.value;
     renderAll();
   });
   renderAll();

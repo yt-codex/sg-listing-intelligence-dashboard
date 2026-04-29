@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SG Listing Intelligence</title>
-    <link rel="stylesheet" href="style.css?v=20260430-0302" />
+    <link rel="stylesheet" href="style.css?v=20260430-0316" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -20,10 +20,19 @@
           <select id="weekSelect"></select>
         </label>
         <label>
-          Segment
+          Listing market
           <select id="typeSelect">
             <option value="SALE">Sale listings</option>
             <option value="RENT">Rental listings</option>
+          </select>
+        </label>
+        <label>
+          Property segment
+          <select id="segmentSelect">
+            <option value="PRIVATE_NON_LANDED">Private non-landed</option>
+            <option value="HDB">HDB</option>
+            <option value="PRIVATE_LANDED">Private landed</option>
+            <option value="OTHER">Other / unknown</option>
           </select>
         </label>
       </div>
@@ -127,6 +136,6 @@
       <span>Generated from compact analytics tables. No raw portal payloads are embedded.</span>
     </footer>
 
-    <script src="app.js?v=20260430-0302"></script>
+    <script src="app.js?v=20260430-0316"></script>
   </body>
 </html>

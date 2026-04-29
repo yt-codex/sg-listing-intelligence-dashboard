@@ -38,6 +38,14 @@ WITH search_dedup AS (
         s.snapshot_date,
         s.listing_id,
         s.listing_type,
+        li.latest_property_type_code AS property_type_code,
+        li.latest_property_type_text AS property_type_text,
+        CASE
+            WHEN li.latest_property_type_code = 'HDB' THEN 'HDB'
+            WHEN li.latest_property_type_code IN ('CONDO', 'APT', 'EXCON', 'WALK') THEN 'PRIVATE_NON_LANDED'
+            WHEN li.latest_property_type_code IN ('SEMI', 'TERRA', 'DETAC', 'CORN', 'LBUNG', 'BUNG', 'LCLUS', 'CLUS', 'CON', 'SHOPH', 'TOWN', 'RLAND') THEN 'PRIVATE_LANDED'
+            ELSE 'OTHER'
+        END AS property_segment,
         li.project_uid,
         COALESCE(NULLIF(TRIM(li.title), ''), 'Unknown project') AS project_name,
         li.full_address,
@@ -112,6 +120,7 @@ SELECT
     next_week.snapshot_date AS snapshot_date,
     prev.listing_id,
     prev.listing_type,
+    prev.property_segment,
     prev.project_uid,
     prev.project_name,
     prev.district_code,
@@ -143,6 +152,7 @@ WITH keyed AS (
         snapshot_week_id,
         snapshot_date,
         listing_type,
+        property_segment,
         project_uid,
         project_name,
         district_text,
@@ -165,6 +175,7 @@ SELECT
     snapshot_week_id,
     snapshot_date,
     listing_type,
+    property_segment,
     project_uid,
     project_name,
     district_text,
@@ -183,6 +194,7 @@ FROM keyed
 GROUP BY
     snapshot_week_id,
     listing_type,
+    property_segment,
     project_uid,
     bedrooms,
     area_bucket_sqft,
@@ -197,6 +209,7 @@ WITH agent_counts AS (
     SELECT
         snapshot_week_id,
         listing_type,
+        property_segment,
         project_uid,
         project_name,
         district_code,
@@ -206,11 +219,12 @@ WITH agent_counts AS (
         COUNT(*) AS listings_by_agent
     FROM listing_week_panel
     WHERE agent_id IS NOT NULL
-    GROUP BY snapshot_week_id, listing_type, project_uid, project_name, district_code, district_text, region_text, agent_id
+    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, district_code, district_text, region_text, agent_id
 ), top_agent AS (
     SELECT
         snapshot_week_id,
         listing_type,
+        property_segment,
         project_uid,
         project_name,
         district_code,
@@ -218,11 +232,12 @@ WITH agent_counts AS (
         region_text,
         MAX(listings_by_agent) AS top_agent_listings
     FROM agent_counts
-    GROUP BY snapshot_week_id, listing_type, project_uid, project_name, district_code, district_text, region_text
+    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, district_code, district_text, region_text
 ), disappeared AS (
     SELECT
         snapshot_week_id,
         listing_type,
+        property_segment,
         project_uid,
         project_name,
         district_code,
@@ -230,21 +245,23 @@ WITH agent_counts AS (
         region_text,
         COUNT(*) AS disappeared_listings
     FROM disappeared_listing_events
-    GROUP BY snapshot_week_id, listing_type, project_uid, project_name, district_code, district_text, region_text
+    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, district_code, district_text, region_text
 ), duplicate AS (
     SELECT
         snapshot_week_id,
         listing_type,
+        property_segment,
         project_uid,
         COUNT(*) AS duplicate_cluster_count,
         SUM(candidate_listing_count) AS duplicate_candidate_listings
     FROM duplicate_cluster_candidates
-    GROUP BY snapshot_week_id, listing_type, project_uid
+    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid
 ), base AS (
     SELECT
         p.snapshot_week_id,
         MIN(p.snapshot_date) AS snapshot_date,
         p.listing_type,
+        p.property_segment,
         p.project_uid,
         p.project_name,
         p.district_code,
@@ -276,6 +293,7 @@ WITH agent_counts AS (
     LEFT JOIN top_agent t
         ON t.snapshot_week_id = p.snapshot_week_id
         AND t.listing_type = p.listing_type
+        AND t.property_segment = p.property_segment
         AND (t.project_uid = p.project_uid OR (t.project_uid IS NULL AND p.project_uid IS NULL))
         AND t.project_name = p.project_name
         AND (t.district_code = p.district_code OR (t.district_code IS NULL AND p.district_code IS NULL))
@@ -284,6 +302,7 @@ WITH agent_counts AS (
     LEFT JOIN disappeared d
         ON d.snapshot_week_id = p.snapshot_week_id
         AND d.listing_type = p.listing_type
+        AND d.property_segment = p.property_segment
         AND (d.project_uid = p.project_uid OR (d.project_uid IS NULL AND p.project_uid IS NULL))
         AND d.project_name = p.project_name
         AND (d.district_code = p.district_code OR (d.district_code IS NULL AND p.district_code IS NULL))
@@ -292,10 +311,12 @@ WITH agent_counts AS (
     LEFT JOIN duplicate du
         ON du.snapshot_week_id = p.snapshot_week_id
         AND du.listing_type = p.listing_type
+        AND du.property_segment = p.property_segment
         AND du.project_uid = p.project_uid
     GROUP BY
         p.snapshot_week_id,
         p.listing_type,
+        p.property_segment,
         p.project_uid,
         p.project_name,
         p.district_code,
@@ -305,11 +326,12 @@ WITH agent_counts AS (
     SELECT
         snapshot_week_id,
         listing_type,
+        property_segment,
         MAX(active_listings) AS max_active_listings,
         MAX(price_cut_rate) AS max_price_cut_rate,
         MAX(duplicate_candidate_listings) AS max_duplicate_candidate_listings
     FROM base
-    GROUP BY snapshot_week_id, listing_type
+    GROUP BY snapshot_week_id, listing_type, property_segment
 )
 SELECT
     b.*,
@@ -322,24 +344,25 @@ SELECT
         2
     ) AS pressure_score
 FROM base b
-JOIN week_max w ON w.snapshot_week_id = b.snapshot_week_id AND w.listing_type = b.listing_type;
+JOIN week_max w ON w.snapshot_week_id = b.snapshot_week_id AND w.listing_type = b.listing_type AND w.property_segment = b.property_segment;
 """
 
 DISTRICT_SQL = """
 CREATE TABLE district_week_metrics AS
 WITH disappeared AS (
-    SELECT snapshot_week_id, listing_type, district_code, COUNT(*) AS disappeared_listings
+    SELECT snapshot_week_id, listing_type, property_segment, district_code, COUNT(*) AS disappeared_listings
     FROM disappeared_listing_events
-    GROUP BY snapshot_week_id, listing_type, district_code
+    GROUP BY snapshot_week_id, listing_type, property_segment, district_code
 ), duplicate AS (
-    SELECT snapshot_week_id, listing_type, district_text, SUM(candidate_listing_count) AS duplicate_candidate_listings
+    SELECT snapshot_week_id, listing_type, property_segment, district_text, SUM(candidate_listing_count) AS duplicate_candidate_listings
     FROM duplicate_cluster_candidates
-    GROUP BY snapshot_week_id, listing_type, district_text
+    GROUP BY snapshot_week_id, listing_type, property_segment, district_text
 ), base AS (
     SELECT
         p.snapshot_week_id,
         MIN(p.snapshot_date) AS snapshot_date,
         p.listing_type,
+        p.property_segment,
         p.district_code,
         p.district_text,
         p.region_text,
@@ -360,21 +383,24 @@ WITH disappeared AS (
     LEFT JOIN disappeared d
         ON d.snapshot_week_id = p.snapshot_week_id
         AND d.listing_type = p.listing_type
+        AND d.property_segment = p.property_segment
         AND (d.district_code = p.district_code OR (d.district_code IS NULL AND p.district_code IS NULL))
     LEFT JOIN duplicate du
         ON du.snapshot_week_id = p.snapshot_week_id
         AND du.listing_type = p.listing_type
+        AND du.property_segment = p.property_segment
         AND du.district_text = p.district_text
-    GROUP BY p.snapshot_week_id, p.listing_type, p.district_code, p.district_text, p.region_text
+    GROUP BY p.snapshot_week_id, p.listing_type, p.property_segment, p.district_code, p.district_text, p.region_text
 ), week_max AS (
     SELECT
         snapshot_week_id,
         listing_type,
+        property_segment,
         MAX(active_listings) AS max_active_listings,
         MAX(price_cut_rate) AS max_price_cut_rate,
         MAX(duplicate_candidate_listings) AS max_duplicate_candidate_listings
     FROM base
-    GROUP BY snapshot_week_id, listing_type
+    GROUP BY snapshot_week_id, listing_type, property_segment
 )
 SELECT
     b.*,
@@ -386,7 +412,7 @@ SELECT
         2
     ) AS pressure_score
 FROM base b
-JOIN week_max w ON w.snapshot_week_id = b.snapshot_week_id AND w.listing_type = b.listing_type;
+JOIN week_max w ON w.snapshot_week_id = b.snapshot_week_id AND w.listing_type = b.listing_type AND w.property_segment = b.property_segment;
 """
 
 PRICE_CUT_SQL = """
@@ -396,6 +422,7 @@ SELECT
     snapshot_date,
     listing_id,
     listing_type,
+    property_segment,
     project_uid,
     project_name,
     district_text,
@@ -443,6 +470,7 @@ SELECT
     p.snapshot_week_id,
     MIN(p.snapshot_date) AS snapshot_date,
     p.listing_type,
+    p.property_segment,
     COUNT(*) AS active_listings,
     SUM(p.is_new_this_week) AS new_listings,
     COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
@@ -460,20 +488,21 @@ SELECT
     COALESCE(du.duplicate_candidate_listings, 0) AS duplicate_candidate_listings
 FROM listing_week_panel p
 LEFT JOIN (
-    SELECT snapshot_week_id, listing_type, COUNT(*) AS disappeared_listings
+    SELECT snapshot_week_id, listing_type, property_segment, COUNT(*) AS disappeared_listings
     FROM disappeared_listing_events
-    GROUP BY snapshot_week_id, listing_type
-) d ON d.snapshot_week_id = p.snapshot_week_id AND d.listing_type = p.listing_type
+    GROUP BY snapshot_week_id, listing_type, property_segment
+) d ON d.snapshot_week_id = p.snapshot_week_id AND d.listing_type = p.listing_type AND d.property_segment = p.property_segment
 LEFT JOIN (
     SELECT
         snapshot_week_id,
         listing_type,
+        property_segment,
         COUNT(*) AS duplicate_cluster_count,
         SUM(candidate_listing_count) AS duplicate_candidate_listings
     FROM duplicate_cluster_candidates
-    GROUP BY snapshot_week_id, listing_type
-) du ON du.snapshot_week_id = p.snapshot_week_id AND du.listing_type = p.listing_type
-GROUP BY p.snapshot_week_id, p.listing_type;
+    GROUP BY snapshot_week_id, listing_type, property_segment
+) du ON du.snapshot_week_id = p.snapshot_week_id AND du.listing_type = p.listing_type AND du.property_segment = p.property_segment
+GROUP BY p.snapshot_week_id, p.listing_type, p.property_segment;
 """
 
 AGENT_PROJECT_SQL = """
@@ -482,6 +511,7 @@ SELECT
     snapshot_week_id,
     MIN(snapshot_date) AS snapshot_date,
     listing_type,
+    property_segment,
     project_uid,
     project_name,
     district_text,
@@ -497,6 +527,7 @@ WHERE agent_id IS NOT NULL
 GROUP BY
     snapshot_week_id,
     listing_type,
+    property_segment,
     project_uid,
     project_name,
     district_text,
