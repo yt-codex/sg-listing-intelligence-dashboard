@@ -208,6 +208,25 @@ pip install -e '.[dev]'
 make check
 ```
 
+## Static GitHub Pages dashboard
+
+The `docs/` directory contains a static dashboard for GitHub Pages. It uses exported aggregate JSON from the analytics database and does not ship raw listing snapshots.
+
+Build/update the static data bundle:
+
+```bash
+make refresh
+make export-static
+```
+
+Preview locally:
+
+```bash
+make serve-static
+```
+
+Then open `http://127.0.0.1:8513`.
+
 ## Implemented dashboard views
 
 - **Overview** — market trend charts, district pressure table, and project pressure ranking for the selected snapshot week.

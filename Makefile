@@ -3,7 +3,7 @@ ANALYTICS_DB ?= data/analytics/listing_intel.sqlite
 PYTHON ?= python
 STREAMLIT_PORT ?= 8509
 
-.PHONY: install test lint check refresh dashboard
+.PHONY: install test lint check refresh dashboard export-static serve-static
 
 install:
 	$(PYTHON) -m pip install -e '.[dev]'
@@ -21,3 +21,9 @@ refresh:
 
 dashboard:
 	streamlit run app/streamlit_app.py --server.port $(STREAMLIT_PORT) -- --db "$(ANALYTICS_DB)"
+
+export-static:
+	$(PYTHON) scripts/export_static_data.py --db "$(ANALYTICS_DB)" --out docs/assets
+
+serve-static:
+	$(PYTHON) -m http.server 8513 -d docs --bind 127.0.0.1

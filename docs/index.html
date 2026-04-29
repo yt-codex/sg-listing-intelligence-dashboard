@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SG Listing Intelligence</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="eyebrow">Property listing intelligence</p>
+        <h1>SG Listing Intelligence Dashboard</h1>
+        <p class="subtle">Static GitHub Pages version powered by aggregate snapshot JSON.</p>
+      </div>
+      <div class="header-actions">
+        <label>
+          Snapshot week
+          <select id="weekSelect"></select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <section class="cards" id="metricCards"></section>
+
+      <nav class="tabs" aria-label="Dashboard sections">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="project">Project detail</button>
+        <button class="tab" data-tab="cuts">Price cuts</button>
+        <button class="tab" data-tab="duplicates">Duplicate candidates</button>
+        <button class="tab" data-tab="agents">Agent concentration</button>
+        <button class="tab" data-tab="quality">Data quality</button>
+      </nav>
+
+      <section class="panel active" id="overview">
+        <div class="grid two">
+          <article class="box">
+            <h2>Market lifecycle</h2>
+            <canvas id="lifecycleChart"></canvas>
+          </article>
+          <article class="box">
+            <h2>Rates and pricing</h2>
+            <canvas id="pricingChart"></canvas>
+          </article>
+        </div>
+        <article class="box">
+          <h2>District pressure</h2>
+          <div id="districtTable"></div>
+        </article>
+        <article class="box">
+          <h2>Project pressure ranking</h2>
+          <p class="subtle">Top aggregate project rows only; raw listing payloads are not shipped.</p>
+          <div id="projectTable"></div>
+        </article>
+      </section>
+
+      <section class="panel" id="project">
+        <article class="box">
+          <div class="project-toolbar">
+            <h2>Project detail</h2>
+            <label>
+              Project
+              <select id="projectSelect"></select>
+            </label>
+          </div>
+          <div class="cards small" id="projectCards"></div>
+          <div class="grid two">
+            <div>
+              <h3>Lifecycle</h3>
+              <canvas id="projectLifecycleChart"></canvas>
+            </div>
+            <div>
+              <h3>Pressure and pricing</h3>
+              <canvas id="projectPressureChart"></canvas>
+            </div>
+          </div>
+          <h3>Weekly metrics</h3>
+          <div id="projectTrendTable"></div>
+        </article>
+      </section>
+
+      <section class="panel" id="cuts">
+        <article class="box">
+          <h2>Largest price-cut events</h2>
+          <div id="cutsTable"></div>
+        </article>
+      </section>
+
+      <section class="panel" id="duplicates">
+        <article class="box">
+          <h2>Likely duplicate / shadow inventory clusters</h2>
+          <p class="subtle">Heuristic groups: same project, bedrooms, rounded area, rounded price, same agent.</p>
+          <div id="duplicatesTable"></div>
+        </article>
+      </section>
+
+      <section class="panel" id="agents">
+        <article class="box">
+          <h2>Agent concentration by project</h2>
+          <p class="subtle">Agent IDs/licences only; agent names are not retained in the lean analytics schema.</p>
+          <div id="agentsTable"></div>
+        </article>
+      </section>
+
+      <section class="panel" id="quality">
+        <article class="box">
+          <h2>Build metadata</h2>
+          <div id="metadataTable"></div>
+        </article>
+        <article class="box">
+          <h2>Snapshot coverage</h2>
+          <div id="coverageTable"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>Generated from compact analytics tables. No raw portal payloads are embedded.</span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
