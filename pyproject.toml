@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sg-listing-intel"
+version = "0.1.0"
+description = "Lightweight Singapore property listing intelligence dashboard MVP"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.2",
+  "streamlit>=1.36",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+sg-listing-etl = "sg_listing_intel.etl:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "app", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
