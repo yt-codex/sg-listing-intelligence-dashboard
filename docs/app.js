@@ -10,7 +10,8 @@ function n(value) {
 
 function fmtNum(value, digits = 0) {
   if (value === null || value === undefined || value === "") return "—";
-  return Number(value).toLocaleString("en-SG", { maximumFractionDigits: digits });
+  const safeDigits = Number.isFinite(Number(digits)) ? Math.max(0, Math.min(20, Number(digits))) : 0;
+  return Number(value).toLocaleString("en-SG", { maximumFractionDigits: safeDigits });
 }
 
 function metric(label, value) {
