@@ -30,6 +30,7 @@ The first version focuses on a **Project-level Listing Pressure Dashboard**:
 - [x] Step 11 — Add market-wide trend and data-quality coverage views.
 - [x] Step 12 — Separate sale/rent segments across market, district, project, duplicate, and agent views.
 - [x] Step 13 — Add URA-style property segment filters: private non-landed, HDB, and private landed.
+- [x] Step 14 — Use clean price-cut counts in pressure metrics, excluding parser corrections and room-rental basis changes.
 
 ## Data architecture
 

@@ -92,6 +92,29 @@ WITH search_dedup AS (
             ELSE 0
         END AS is_price_cut,
         CASE
+            WHEN prior_price_value IS NOT NULL
+                AND price_value < prior_price_value
+                AND NOT (
+                    ((price_value - prior_price_value) * 1.0 / prior_price_value <= -0.75
+                        AND prior_price_value > 0
+                        AND price_value > 0
+                        AND prior_price_value * 1.0 / price_value BETWEEN 8.5 AND 11.5)
+                    OR ((price_value - prior_price_value) * 1.0 / prior_price_value <= -0.75
+                        AND prior_price_per_area_value > 0
+                        AND price_per_area_value > 0
+                        AND prior_price_per_area_value * 1.0 / price_per_area_value BETWEEN 8.5 AND 11.5)
+                    OR (listing_type = 'RENT'
+                        AND prior_price_value >= 30000
+                        AND price_value < 30000)
+                    OR (listing_type = 'RENT'
+                        AND COALESCE(bedrooms, 0) = 0
+                        AND COALESCE(floor_area_sqft, 0) <= 350
+                        AND (price_value - prior_price_value) * 1.0 / prior_price_value <= -0.35)
+                )
+            THEN 1
+            ELSE 0
+        END AS is_clean_price_cut,
+        CASE
             WHEN snapshot_week_id = MIN(snapshot_week_id) OVER (PARTITION BY listing_id, listing_type) THEN 1
             ELSE 0
         END AS is_new_this_week,
@@ -270,8 +293,8 @@ WITH agent_counts AS (
         COUNT(*) AS active_listings,
         SUM(p.is_new_this_week) AS new_listings,
         COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
-        SUM(p.is_price_cut) AS price_cut_listings,
-        ROUND(SUM(p.is_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
+        SUM(p.is_clean_price_cut) AS price_cut_listings,
+        ROUND(SUM(p.is_clean_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
         ROUND(AVG(p.is_stale_60d), 4) AS stale_60d_share,
         ROUND(AVG(p.is_stale_90d), 4) AS stale_90d_share,
         ROUND(AVG(p.price_value), 2) AS avg_price,
@@ -369,8 +392,8 @@ WITH disappeared AS (
         COUNT(*) AS active_listings,
         SUM(p.is_new_this_week) AS new_listings,
         COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
-        SUM(p.is_price_cut) AS price_cut_listings,
-        ROUND(SUM(p.is_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
+        SUM(p.is_clean_price_cut) AS price_cut_listings,
+        ROUND(SUM(p.is_clean_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
         ROUND(AVG(p.is_stale_60d), 4) AS stale_60d_share,
         ROUND(AVG(p.is_stale_90d), 4) AS stale_90d_share,
         ROUND(AVG(p.price_value), 2) AS avg_price,
@@ -474,8 +497,8 @@ SELECT
     COUNT(*) AS active_listings,
     SUM(p.is_new_this_week) AS new_listings,
     COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
-    SUM(p.is_price_cut) AS price_cut_listings,
-    ROUND(SUM(p.is_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
+    SUM(p.is_clean_price_cut) AS price_cut_listings,
+    ROUND(SUM(p.is_clean_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
     ROUND(AVG(p.is_stale_60d), 4) AS stale_60d_share,
     ROUND(AVG(p.is_stale_90d), 4) AS stale_90d_share,
     ROUND(AVG(p.price_value), 2) AS avg_price,
@@ -519,7 +542,7 @@ SELECT
     agent_license,
     agency_id,
     COUNT(*) AS active_listings,
-    SUM(is_price_cut) AS price_cut_listings,
+    SUM(is_clean_price_cut) AS price_cut_listings,
     ROUND(AVG(price_per_area_value), 2) AS avg_psf,
     ROUND(AVG(is_stale_60d), 4) AS stale_60d_share
 FROM listing_week_panel
