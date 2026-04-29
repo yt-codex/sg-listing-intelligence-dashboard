@@ -142,6 +142,7 @@ def load_price_cuts(db_path: str, week: str) -> pd.DataFrame:
             price_change_abs,
             ROUND(100.0 * price_change_pct, 2) AS price_change_pct,
             price_per_area_value,
+            prior_price_per_area_value,
             age_days,
             quality_flag
         FROM price_cut_events
@@ -226,6 +227,7 @@ def load_project_cut_events(db_path: str, project_uid: str) -> pd.DataFrame:
             price_change_abs,
             ROUND(100.0 * price_change_pct, 2) AS price_change_pct,
             price_per_area_value,
+            prior_price_per_area_value,
             age_days
         FROM price_cut_events
         WHERE project_uid = ? AND quality_flag = 'ok'

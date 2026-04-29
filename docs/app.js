@@ -195,6 +195,7 @@ function renderEventTables() {
     { key: "prior_price_value", label: "Prior price", num: true, format: fmtNum },
     { key: "price_value", label: "Price", num: true, format: fmtNum },
     { key: "price_change_pct", label: "Change %", num: true, format: (v) => fmtNum(n(v) * 100, 2) },
+    { key: "quality_flag", label: "Flag" },
     { key: "age_days", label: "Age days", num: true, format: fmtNum },
   ]);
 
@@ -241,7 +242,7 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260430-0238", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260430-0245", { cache: "no-store" });
   data = await res.json();
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");

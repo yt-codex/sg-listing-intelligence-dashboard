@@ -63,7 +63,11 @@ WITH search_dedup AS (
         LAG(s.price_value) OVER (
             PARTITION BY s.listing_id, s.listing_type
             ORDER BY s.snapshot_week_id
-        ) AS prior_price_value
+        ) AS prior_price_value,
+        LAG(s.price_per_area_value) OVER (
+            PARTITION BY s.listing_id, s.listing_type
+            ORDER BY s.snapshot_week_id
+        ) AS prior_price_per_area_value
     FROM search_dedup s
     JOIN identity_dedup li
         ON li.listing_id = s.listing_id
@@ -386,14 +390,29 @@ SELECT
     price_change_abs,
     price_change_pct,
     price_per_area_value,
+    prior_price_per_area_value,
     age_days,
     agent_id,
     agency_id,
     CASE
+        WHEN price_change_pct <= -0.75
+            AND prior_price_value > 0
+            AND price_value > 0
+            AND prior_price_value * 1.0 / price_value BETWEEN 8.5 AND 11.5
+        THEN 'likely_extra_digit_or_parser_correction'
+        WHEN price_change_pct <= -0.75
+            AND prior_price_per_area_value > 0
+            AND price_per_area_value > 0
+            AND prior_price_per_area_value * 1.0 / price_per_area_value BETWEEN 8.5 AND 11.5
+        THEN 'likely_extra_digit_or_parser_correction'
+        WHEN listing_type = 'RENT'
+            AND prior_price_value >= 30000
+            AND price_value < 30000
+        THEN 'likely_parser_outlier_correction'
         WHEN listing_type = 'RENT'
             AND COALESCE(bedrooms, 0) = 0
-            AND COALESCE(floor_area_sqft, 0) <= 250
-            AND price_change_pct <= -0.4
+            AND COALESCE(floor_area_sqft, 0) <= 350
+            AND price_change_pct <= -0.35
         THEN 'possible_room_rent_basis_change'
         ELSE 'ok'
     END AS quality_flag
