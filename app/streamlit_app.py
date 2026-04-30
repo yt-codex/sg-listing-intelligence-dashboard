@@ -71,10 +71,12 @@ def load_project_metrics(db_path: str, week: str, min_listings: int) -> pd.DataF
         SELECT
             project_uid,
             project_name,
+            project_group_type,
+            postal_code,
             district_text,
             region_text,
-            pressure_score,
             active_listings,
+            pressure_score,
             new_listings,
             disappeared_listings,
             price_cut_listings,
@@ -89,7 +91,7 @@ def load_project_metrics(db_path: str, week: str, min_listings: int) -> pd.DataF
             duplicate_candidate_listings
         FROM project_week_metrics
         WHERE snapshot_week_id = ? AND active_listings >= ?
-        ORDER BY pressure_score DESC, price_cut_listings DESC, active_listings DESC
+        ORDER BY active_listings DESC, pressure_score DESC, price_cut_listings DESC
         LIMIT 250
         """,
         (week, min_listings),
@@ -168,13 +170,15 @@ def load_project_options(db_path: str, min_listings: int) -> pd.DataFrame:
         SELECT
             project_uid,
             project_name,
+            project_group_type,
+            postal_code,
             district_text,
             active_listings,
             pressure_score,
             price_cut_listings
         FROM latest_project
         WHERE project_uid IS NOT NULL AND active_listings >= ?
-        ORDER BY pressure_score DESC, active_listings DESC, project_name
+        ORDER BY active_listings DESC, pressure_score DESC, project_name
         LIMIT 500
         """,
         (min_listings,),
@@ -416,8 +420,8 @@ def main() -> None:
         st.caption("Pressure score combines inventory scale, price-cut rate, stale share, and duplicate candidates.")
         st.dataframe(district, use_container_width=True, hide_index=True)
 
-        st.subheader("Project pressure ranking")
-        st.caption("Sorted by pressure score. Limited to top 250 rows.")
+        st.subheader("Project / postal pressure ranking")
+        st.caption("Actual project_id rows are grouped by project; title-only rows fall back to postal code. Sorted by active listings, then pressure score. Limited to top 250 rows.")
         st.dataframe(projects, use_container_width=True, hide_index=True)
 
     with tab_project:

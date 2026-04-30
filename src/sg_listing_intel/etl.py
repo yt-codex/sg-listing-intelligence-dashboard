@@ -46,8 +46,22 @@ WITH search_dedup AS (
             WHEN li.latest_property_type_code IN ('SEMI', 'TERRA', 'DETAC', 'CORN', 'LBUNG', 'BUNG', 'LCLUS', 'CLUS', 'CON', 'SHOPH', 'TOWN', 'RLAND') THEN 'PRIVATE_LANDED'
             ELSE 'OTHER'
         END AS property_segment,
-        li.project_uid,
-        COALESCE(NULLIF(TRIM(li.title), ''), 'Unknown project') AS project_name,
+        CASE
+            WHEN dp.project_uid_type = 'project_id' AND NULLIF(TRIM(dp.project_name), '') IS NOT NULL THEN li.project_uid
+            WHEN NULLIF(TRIM(li.postal_code), '') IS NOT NULL THEN 'postal:' || TRIM(li.postal_code)
+            ELSE 'listing:' || s.listing_id
+        END AS project_uid,
+        CASE
+            WHEN dp.project_uid_type = 'project_id' AND NULLIF(TRIM(dp.project_name), '') IS NOT NULL THEN TRIM(dp.project_name)
+            WHEN NULLIF(TRIM(li.postal_code), '') IS NOT NULL THEN 'Postal ' || TRIM(li.postal_code)
+            ELSE COALESCE(NULLIF(TRIM(li.title), ''), 'Unknown listing title')
+        END AS project_name,
+        CASE
+            WHEN dp.project_uid_type = 'project_id' AND NULLIF(TRIM(dp.project_name), '') IS NOT NULL THEN 'actual_project'
+            WHEN NULLIF(TRIM(li.postal_code), '') IS NOT NULL THEN 'postal_code'
+            ELSE 'listing_title'
+        END AS project_group_type,
+        NULLIF(TRIM(li.postal_code), '') AS postal_code,
         li.full_address,
         li.district_code,
         COALESCE(NULLIF(TRIM(li.district_text), ''), 'Unknown district') AS district_text,
@@ -79,6 +93,8 @@ WITH search_dedup AS (
     FROM search_dedup s
     JOIN identity_dedup li
         ON li.listing_id = s.listing_id
+    LEFT JOIN project_lookup dp
+        ON dp.project_uid = li.project_uid
 ), panel AS (
     SELECT
         *,
@@ -146,6 +162,8 @@ SELECT
     prev.property_segment,
     prev.project_uid,
     prev.project_name,
+    prev.project_group_type,
+    prev.postal_code,
     prev.district_code,
     prev.district_text,
     prev.region_text,
@@ -178,6 +196,8 @@ WITH keyed AS (
         property_segment,
         project_uid,
         project_name,
+        project_group_type,
+        postal_code,
         district_text,
         region_text,
         bedrooms,
@@ -201,6 +221,8 @@ SELECT
     property_segment,
     project_uid,
     project_name,
+    project_group_type,
+    postal_code,
     district_text,
     region_text,
     bedrooms,
@@ -235,6 +257,7 @@ WITH agent_counts AS (
         property_segment,
         project_uid,
         project_name,
+        project_group_type,
         district_code,
         district_text,
         region_text,
@@ -242,7 +265,7 @@ WITH agent_counts AS (
         COUNT(*) AS listings_by_agent
     FROM listing_week_panel
     WHERE agent_id IS NOT NULL
-    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, district_code, district_text, region_text, agent_id
+    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, project_group_type, district_code, district_text, region_text, agent_id
 ), top_agent AS (
     SELECT
         snapshot_week_id,
@@ -250,12 +273,13 @@ WITH agent_counts AS (
         property_segment,
         project_uid,
         project_name,
+        project_group_type,
         district_code,
         district_text,
         region_text,
         MAX(listings_by_agent) AS top_agent_listings
     FROM agent_counts
-    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, district_code, district_text, region_text
+    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, project_group_type, district_code, district_text, region_text
 ), disappeared AS (
     SELECT
         snapshot_week_id,
@@ -263,12 +287,13 @@ WITH agent_counts AS (
         property_segment,
         project_uid,
         project_name,
+        project_group_type,
         district_code,
         district_text,
         region_text,
         COUNT(*) AS disappeared_listings
     FROM disappeared_listing_events
-    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, district_code, district_text, region_text
+    GROUP BY snapshot_week_id, listing_type, property_segment, project_uid, project_name, project_group_type, district_code, district_text, region_text
 ), duplicate AS (
     SELECT
         snapshot_week_id,
@@ -287,9 +312,14 @@ WITH agent_counts AS (
         p.property_segment,
         p.project_uid,
         p.project_name,
+        p.project_group_type,
         p.district_code,
         p.district_text,
         p.region_text,
+        CASE
+            WHEN COUNT(DISTINCT p.postal_code) = 1 THEN MAX(p.postal_code)
+            WHEN COUNT(DISTINCT p.postal_code) > 1 THEN 'multiple'
+        END AS postal_code,
         COUNT(*) AS active_listings,
         SUM(p.is_new_this_week) AS new_listings,
         COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
@@ -342,6 +372,7 @@ WITH agent_counts AS (
         p.property_segment,
         p.project_uid,
         p.project_name,
+        p.project_group_type,
         p.district_code,
         p.district_text,
         p.region_text
@@ -448,6 +479,8 @@ SELECT
     property_segment,
     project_uid,
     project_name,
+    project_group_type,
+    postal_code,
     district_text,
     region_text,
     bedrooms,
@@ -537,6 +570,8 @@ SELECT
     property_segment,
     project_uid,
     project_name,
+    project_group_type,
+    postal_code,
     district_text,
     agent_id,
     agent_license,
@@ -553,6 +588,8 @@ GROUP BY
     property_segment,
     project_uid,
     project_name,
+    project_group_type,
+    postal_code,
     district_text,
     agent_id,
     agent_license,
@@ -572,6 +609,41 @@ INDEX_SQL = [
 ]
 
 
+def _prepare_source_helpers(con: sqlite3.Connection) -> None:
+    has_detail_project = con.execute(
+        """
+        SELECT 1
+        FROM source.sqlite_master
+        WHERE type = 'table' AND name = 'detail_project'
+        """
+    ).fetchone()
+    if has_detail_project:
+        con.execute(
+            """
+            CREATE TEMP TABLE project_lookup AS
+            SELECT
+                project_uid,
+                project_uid_type,
+                source_project_id,
+                project_name
+            FROM source.detail_project
+            """
+        )
+    else:
+        con.execute(
+            """
+            CREATE TEMP TABLE project_lookup AS
+            SELECT DISTINCT
+                project_uid,
+                'project_id' AS project_uid_type,
+                NULL AS source_project_id,
+                title AS project_name
+            FROM source.listing_identity
+            WHERE project_uid IS NOT NULL
+            """
+        )
+
+
 def build_analytics_db(source: Path, output: Path) -> None:
     if not source.exists():
         raise FileNotFoundError(f"Source database not found: {source}")
@@ -584,6 +656,7 @@ def build_analytics_db(source: Path, output: Path) -> None:
         con.execute("PRAGMA journal_mode=WAL")
         con.execute("PRAGMA synchronous=NORMAL")
         con.execute("ATTACH DATABASE ? AS source", (str(source),))
+        _prepare_source_helpers(con)
 
         con.executescript(PANEL_SQL)
         con.executescript(WEEK_SQL)

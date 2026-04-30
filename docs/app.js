@@ -132,10 +132,12 @@ function renderOverview() {
   ]);
 
   table("projectTable", byWeek(data.projects), [
-    { key: "project_name", label: "Project" },
+    { key: "project_name", label: "Project / postal group" },
+    { key: "project_group_type", label: "Level" },
+    { key: "postal_code", label: "Postal" },
     { key: "district_text", label: "District" },
-    { key: "pressure_score", label: "Score", num: true, format: (v) => fmtNum(v, 1) },
     { key: "active_listings", label: "Active", num: true, format: fmtNum },
+    { key: "pressure_score", label: "Score", num: true, format: (v) => fmtNum(v, 1) },
     { key: "new_listings", label: "New", num: true, format: fmtNum },
     { key: "disappeared_listings", label: "Gone", num: true, format: fmtNum },
     { key: "price_cut_listings", label: "Cuts", num: true, format: fmtNum },
@@ -145,7 +147,8 @@ function renderOverview() {
 }
 
 function projectLabel(row) {
-  return `${row.project_name} — ${row.district_text} (score ${fmtNum(row.pressure_score, 1)}, ${fmtNum(row.active_listings)} active)`;
+  const level = row.project_group_type === "postal_code" ? `postal ${row.postal_code}` : row.project_group_type || "project";
+  return `${row.project_name} — ${level} — ${row.district_text} (${fmtNum(row.active_listings)} active, score ${fmtNum(row.pressure_score, 1)})`;
 }
 
 function setupProjectSelect() {
@@ -252,7 +255,7 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260430-0328", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260430-2245", { cache: "no-store" });
   data = await res.json();
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");

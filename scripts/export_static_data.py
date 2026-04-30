@@ -44,7 +44,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
                     *,
                     ROW_NUMBER() OVER (
                         PARTITION BY snapshot_week_id, listing_type, property_segment
-                        ORDER BY pressure_score DESC, active_listings DESC
+                        ORDER BY active_listings DESC, pressure_score DESC
                     ) AS rn
                 FROM project_week_metrics
                 WHERE project_uid IS NOT NULL
