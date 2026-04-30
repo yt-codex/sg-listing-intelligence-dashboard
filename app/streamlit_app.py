@@ -417,19 +417,36 @@ def main() -> None:
             st.dataframe(market_trend, use_container_width=True, hide_index=True)
 
         st.subheader("District pressure")
-        st.caption(
-            "District pressure is a relative stress signal within the selected week/market/segment: "
-            "45% active-listing scale, 25% price-cut rate, 20% stale-60d share, and 10% duplicate-candidate intensity. "
-            "Higher scores mean more visible listing pressure versus peer districts in the same filtered market."
+        st.markdown(
+            """
+            Think of this as a **seller-stress / listing-oversupply signal** for the selected week, market, and property segment.
+            A higher score means the district has more visible listing-side pressure than peer districts.
+
+            - **Many active listings** → lots of competing units available.
+            - **Many price cuts** → sellers/agents are adjusting downward.
+            - **Many stale listings** → units are sitting unsold or unrented.
+            - **Duplicate/shadow listings** → the same stock may be aggressively marketed.
+
+            Formula: **45%** active-listing scale + **25%** price-cut rate + **20%** stale-60d share + **10%** duplicate candidates.
+            """
         )
         st.dataframe(district, use_container_width=True, hide_index=True)
 
         st.subheader("Project / postal pressure ranking")
-        st.caption(
-            "Project/postal pressure applies the same idea at a finer geography: 40% active-listing scale, "
-            "25% price-cut rate, 20% stale-60d share, 10% top-agent share, and 5% duplicate candidates. "
-            "Actual project_id rows are grouped by true project; title-only rows fall back to postal code where available. "
-            "Sorted by active listings, then pressure score. Limited to top 250 rows."
+        st.markdown(
+            """
+            Same **seller-stress / listing-oversupply signal**, but at actual project level where available.
+            If a row only has a marketing title rather than a true project, it falls back to postal-code grouping where possible.
+            The table is sorted by active listings first, then pressure score.
+
+            - **Many active listings** → many competing units in the project/postal area.
+            - **Many price cuts** → sellers/agents are adjusting downward.
+            - **Many stale listings** → units are sitting unsold or unrented.
+            - **Duplicate/shadow listings** → similar stock may be repeatedly marketed.
+            - **Top-agent concentration** → one agent may be pushing many similar units.
+
+            Formula: **40%** active-listing scale + **25%** price-cut rate + **20%** stale-60d share + **10%** top-agent share + **5%** duplicate candidates.
+            """
         )
         st.dataframe(projects, use_container_width=True, hide_index=True)
 

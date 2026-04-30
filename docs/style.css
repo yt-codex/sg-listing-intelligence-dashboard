@@ -45,18 +45,15 @@ h3 { margin: 18px 0 10px; font-size: 15px; }
   padding: 10px 12px;
   line-height: 1.45;
 }
-.info-tip {
-  display: inline-grid;
-  place-items: center;
-  width: 19px;
-  height: 19px;
-  margin-left: 6px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 900;
-  vertical-align: middle;
+.signal-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.signal-list li { margin: 3px 0; }
+.signal-list strong { color: #334155; }
 }
 
 label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }

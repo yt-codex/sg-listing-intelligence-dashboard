@@ -62,19 +62,35 @@
           </article>
         </div>
         <article class="box">
-          <h2>District pressure <span class="info-tip" tabindex="0" aria-label="District pressure explanation">?</span></h2>
+          <h2>District pressure ranking</h2>
           <p class="subtle explainer">
-            District pressure is a relative stress signal within the selected week/market/segment. It combines inventory scale, price-cut rate, stale-listing share, and duplicate-candidate intensity. Higher scores mean the district has more visible listing pressure versus other districts in the same filtered market.
+            Think of this as a <strong>seller-stress / listing-oversupply signal</strong> for the selected week, market, and property segment. A higher score means the district has more visible listing-side pressure than peer districts.
+          </p>
+          <ul class="signal-list">
+            <li><strong>Many active listings</strong> → lots of competing units available.</li>
+            <li><strong>Many price cuts</strong> → sellers/agents are adjusting downward.</li>
+            <li><strong>Many stale listings</strong> → units are sitting unsold or unrented.</li>
+            <li><strong>Duplicate/shadow listings</strong> → the same stock may be aggressively marketed.</li>
+          </ul>
+          <p class="subtle formula">
+            District score formula: 45% active-listing scale + 25% price-cut rate + 20% stale-60d share + 10% duplicate candidates.
           </p>
           <div id="districtTable"></div>
         </article>
         <article class="box">
-          <h2>Project / postal pressure ranking <span class="info-tip" tabindex="0" aria-label="Project pressure explanation">?</span></h2>
+          <h2>Project / postal pressure ranking</h2>
           <p class="subtle explainer">
-            Project pressure is the same relative stress idea at project/postal level. True PropertyGuru project-id rows are grouped by actual project; title-only listings fall back to postal code where available. The table is sorted by active listings first, then pressure score.
+            Same seller-stress / listing-oversupply signal, but at actual project level where available. If a row only has a marketing title rather than a true project, it falls back to postal-code grouping where possible. The table is sorted by active listings first, then pressure score.
           </p>
+          <ul class="signal-list">
+            <li><strong>Many active listings</strong> → many competing units in the project/postal area.</li>
+            <li><strong>Many price cuts</strong> → sellers/agents are adjusting downward.</li>
+            <li><strong>Many stale listings</strong> → units are sitting unsold or unrented.</li>
+            <li><strong>Duplicate/shadow listings</strong> → similar stock may be repeatedly marketed.</li>
+            <li><strong>Top-agent concentration</strong> → one agent may be pushing many similar units.</li>
+          </ul>
           <p class="subtle formula">
-            Score formula: district = 45% active-listing scale + 25% price-cut rate + 20% stale-60d share + 10% duplicate candidates. Project/postal = 40% active-listing scale + 25% price-cut rate + 20% stale-60d share + 10% top-agent share + 5% duplicate candidates.
+            Project/postal score formula: 40% active-listing scale + 25% price-cut rate + 20% stale-60d share + 10% top-agent share + 5% duplicate candidates.
           </p>
           <div id="projectTable"></div>
         </article>
