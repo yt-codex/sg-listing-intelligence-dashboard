@@ -419,7 +419,10 @@ WITH disappeared AS (
         p.property_segment,
         p.district_code,
         p.district_text,
-        p.region_text,
+        COALESCE(
+            MAX(CASE WHEN p.region_text <> 'Unknown region' THEN p.region_text END),
+            'Unknown region'
+        ) AS region_text,
         COUNT(*) AS active_listings,
         SUM(p.is_new_this_week) AS new_listings,
         COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
@@ -444,7 +447,7 @@ WITH disappeared AS (
         AND du.listing_type = p.listing_type
         AND du.property_segment = p.property_segment
         AND du.district_text = p.district_text
-    GROUP BY p.snapshot_week_id, p.listing_type, p.property_segment, p.district_code, p.district_text, p.region_text
+    GROUP BY p.snapshot_week_id, p.listing_type, p.property_segment, p.district_code, p.district_text
 ), week_max AS (
     SELECT
         snapshot_week_id,
