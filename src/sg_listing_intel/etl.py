@@ -390,11 +390,11 @@ WITH agent_counts AS (
 SELECT
     b.*,
     ROUND(
-        40.0 * b.active_listings / NULLIF(w.max_active_listings, 0)
-        + 25.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0)
-        + 20.0 * b.stale_60d_share
+        10.0 * b.active_listings / NULLIF(w.max_active_listings, 0)
+        + 35.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0)
+        + 30.0 * b.stale_60d_share
         + 10.0 * b.top_agent_share
-        + 5.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0),
+        + 15.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0),
         2
     ) AS pressure_score
 FROM base b
@@ -459,10 +459,10 @@ WITH disappeared AS (
 SELECT
     b.*,
     ROUND(
-        45.0 * b.active_listings / NULLIF(w.max_active_listings, 0)
-        + 25.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0)
-        + 20.0 * b.stale_60d_share
-        + 10.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0),
+        10.0 * b.active_listings / NULLIF(w.max_active_listings, 0)
+        + 35.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0)
+        + 30.0 * b.stale_60d_share
+        + 25.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0),
         2
     ) AS pressure_score
 FROM base b

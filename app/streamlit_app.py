@@ -427,7 +427,7 @@ def main() -> None:
             - **Many stale listings** → units are sitting unsold or unrented.
             - **Duplicate/shadow listings** → the same stock may be aggressively marketed.
 
-            Formula: **45%** active-listing scale + **25%** price-cut rate + **20%** stale-60d share + **10%** duplicate candidates.
+            Formula: **10%** active-listing scale + **35%** price-cut rate + **30%** stale-60d share + **25%** duplicate candidates.
             """
         )
         st.dataframe(district, use_container_width=True, hide_index=True)
@@ -445,7 +445,7 @@ def main() -> None:
             - **Duplicate/shadow listings** → similar stock may be repeatedly marketed.
             - **Top-agent concentration** → one agent may be pushing many similar units.
 
-            Formula: **40%** active-listing scale + **25%** price-cut rate + **20%** stale-60d share + **10%** top-agent share + **5%** duplicate candidates.
+            Formula: **10%** active-listing scale + **35%** price-cut rate + **30%** stale-60d share + **10%** top-agent share + **15%** duplicate candidates.
             """
         )
         st.dataframe(projects, use_container_width=True, hide_index=True)
