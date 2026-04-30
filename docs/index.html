@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SG Listing Intelligence</title>
-    <link rel="stylesheet" href="style.css?v=20260430-0328" />
+    <link rel="stylesheet" href="style.css?v=20260430-2335" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -62,12 +62,20 @@
           </article>
         </div>
         <article class="box">
-          <h2>District pressure</h2>
+          <h2>District pressure <span class="info-tip" tabindex="0" aria-label="District pressure explanation">?</span></h2>
+          <p class="subtle explainer">
+            District pressure is a relative stress signal within the selected week/market/segment. It combines inventory scale, price-cut rate, stale-listing share, and duplicate-candidate intensity. Higher scores mean the district has more visible listing pressure versus other districts in the same filtered market.
+          </p>
           <div id="districtTable"></div>
         </article>
         <article class="box">
-          <h2>Project pressure ranking</h2>
-          <p class="subtle">Top aggregate project rows only; raw listing payloads are not shipped.</p>
+          <h2>Project / postal pressure ranking <span class="info-tip" tabindex="0" aria-label="Project pressure explanation">?</span></h2>
+          <p class="subtle explainer">
+            Project pressure is the same relative stress idea at project/postal level. True PropertyGuru project-id rows are grouped by actual project; title-only listings fall back to postal code where available. The table is sorted by active listings first, then pressure score.
+          </p>
+          <p class="subtle formula">
+            Score formula: district = 45% active-listing scale + 25% price-cut rate + 20% stale-60d share + 10% duplicate candidates. Project/postal = 40% active-listing scale + 25% price-cut rate + 20% stale-60d share + 10% top-agent share + 5% duplicate candidates.
+          </p>
           <div id="projectTable"></div>
         </article>
       </section>
@@ -136,6 +144,6 @@
       <span>Generated from compact analytics tables. No raw portal payloads are embedded.</span>
     </footer>
 
-    <script src="app.js?v=20260430-0328"></script>
+    <script src="app.js?v=20260430-2335"></script>
   </body>
 </html>

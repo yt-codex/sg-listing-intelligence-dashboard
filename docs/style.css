@@ -37,6 +37,27 @@ h2 { margin-bottom: 14px; font-size: 20px; }
 h3 { margin: 18px 0 10px; font-size: 15px; }
 .eyebrow { color: var(--accent); text-transform: uppercase; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; margin-bottom: 8px; }
 .subtle { color: var(--muted); font-size: 14px; }
+.explainer { max-width: 980px; line-height: 1.45; margin-bottom: 10px; }
+.formula {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  line-height: 1.45;
+}
+.info-tip {
+  display: inline-grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  vertical-align: middle;
+}
 
 label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
 .header-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }

@@ -417,11 +417,20 @@ def main() -> None:
             st.dataframe(market_trend, use_container_width=True, hide_index=True)
 
         st.subheader("District pressure")
-        st.caption("Pressure score combines inventory scale, price-cut rate, stale share, and duplicate candidates.")
+        st.caption(
+            "District pressure is a relative stress signal within the selected week/market/segment: "
+            "45% active-listing scale, 25% price-cut rate, 20% stale-60d share, and 10% duplicate-candidate intensity. "
+            "Higher scores mean more visible listing pressure versus peer districts in the same filtered market."
+        )
         st.dataframe(district, use_container_width=True, hide_index=True)
 
         st.subheader("Project / postal pressure ranking")
-        st.caption("Actual project_id rows are grouped by project; title-only rows fall back to postal code. Sorted by active listings, then pressure score. Limited to top 250 rows.")
+        st.caption(
+            "Project/postal pressure applies the same idea at a finer geography: 40% active-listing scale, "
+            "25% price-cut rate, 20% stale-60d share, 10% top-agent share, and 5% duplicate candidates. "
+            "Actual project_id rows are grouped by true project; title-only rows fall back to postal code where available. "
+            "Sorted by active listings, then pressure score. Limited to top 250 rows."
+        )
         st.dataframe(projects, use_container_width=True, hide_index=True)
 
     with tab_project:
