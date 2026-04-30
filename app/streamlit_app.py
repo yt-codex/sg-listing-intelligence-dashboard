@@ -75,20 +75,18 @@ def load_project_metrics(db_path: str, week: str, min_listings: int) -> pd.DataF
             postal_code,
             district_text,
             region_text,
-            active_listings,
             pressure_score,
-            new_listings,
-            disappeared_listings,
-            price_cut_listings,
+            active_listings,
             ROUND(100.0 * price_cut_rate, 1) AS price_cut_rate_pct,
             ROUND(100.0 * stale_60d_share, 1) AS stale_60d_pct,
+            ROUND(100.0 * top_agent_share, 1) AS top_agent_pct,
+            duplicate_candidate_listings,
+            price_cut_listings,
             avg_price,
             avg_psf,
             distinct_agents,
             distinct_agencies,
-            ROUND(100.0 * top_agent_share, 1) AS top_agent_pct,
-            duplicate_cluster_count,
-            duplicate_candidate_listings
+            duplicate_cluster_count
         FROM project_week_metrics
         WHERE snapshot_week_id = ? AND active_listings >= ?
         ORDER BY active_listings DESC, pressure_score DESC, price_cut_listings DESC
@@ -109,16 +107,14 @@ def load_district_metrics(db_path: str, week: str) -> pd.DataFrame:
             region_text,
             pressure_score,
             active_listings,
-            new_listings,
-            disappeared_listings,
-            price_cut_listings,
             ROUND(100.0 * price_cut_rate, 1) AS price_cut_rate_pct,
             ROUND(100.0 * stale_60d_share, 1) AS stale_60d_pct,
+            duplicate_candidate_listings,
+            price_cut_listings,
             avg_price,
             avg_psf,
             distinct_projects,
-            distinct_agents,
-            duplicate_candidate_listings
+            distinct_agents
         FROM district_week_metrics
         WHERE snapshot_week_id = ?
         ORDER BY pressure_score DESC, active_listings DESC

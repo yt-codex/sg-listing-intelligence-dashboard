@@ -125,9 +125,9 @@ function renderOverview() {
     { key: "region_text", label: "Region" },
     { key: "pressure_score", label: "Score", num: true, format: (v) => fmtNum(v, 1) },
     { key: "active_listings", label: "Active", num: true, format: fmtNum },
-    { key: "new_listings", label: "New", num: true, format: fmtNum },
-    { key: "disappeared_listings", label: "Gone", num: true, format: fmtNum },
-    { key: "price_cut_listings", label: "Cuts", num: true, format: fmtNum },
+    { key: "price_cut_rate", label: "Cut %", num: true, format: (v) => fmtNum(n(v) * 100, 1) },
+    { key: "stale_60d_share", label: "Stale 60d %", num: true, format: (v) => fmtNum(n(v) * 100, 1) },
+    { key: "duplicate_candidate_listings", label: "Duplicate candidates", num: true, format: fmtNum },
     { key: "avg_psf", label: "Avg PSF", num: true, format: fmtNum },
   ]);
 
@@ -136,13 +136,13 @@ function renderOverview() {
     { key: "project_group_type", label: "Level" },
     { key: "postal_code", label: "Postal" },
     { key: "district_text", label: "District" },
-    { key: "active_listings", label: "Active", num: true, format: fmtNum },
     { key: "pressure_score", label: "Score", num: true, format: (v) => fmtNum(v, 1) },
-    { key: "new_listings", label: "New", num: true, format: fmtNum },
-    { key: "disappeared_listings", label: "Gone", num: true, format: fmtNum },
-    { key: "price_cut_listings", label: "Cuts", num: true, format: fmtNum },
-    { key: "avg_psf", label: "Avg PSF", num: true, format: fmtNum },
+    { key: "active_listings", label: "Active", num: true, format: fmtNum },
+    { key: "price_cut_rate", label: "Cut %", num: true, format: (v) => fmtNum(n(v) * 100, 1) },
+    { key: "stale_60d_share", label: "Stale 60d %", num: true, format: (v) => fmtNum(n(v) * 100, 1) },
     { key: "top_agent_share", label: "Top agent %", num: true, format: (v) => fmtNum(n(v) * 100, 1) },
+    { key: "duplicate_candidate_listings", label: "Duplicate candidates", num: true, format: fmtNum },
+    { key: "avg_psf", label: "Avg PSF", num: true, format: fmtNum },
   ]);
 }
 
@@ -255,7 +255,7 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260430-2245", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260501-0010", { cache: "no-store" });
   data = await res.json();
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");
