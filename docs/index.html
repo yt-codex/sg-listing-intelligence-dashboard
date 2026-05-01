@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SG Listing Intelligence</title>
-    <link rel="stylesheet" href="style.css?v=20260501-1225" />
+    <link rel="stylesheet" href="style.css?v=20260501-1245" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -108,20 +108,27 @@
         <article class="box">
           <div class="project-toolbar">
             <h2>Project detail</h2>
-            <label>
-              Project
-              <select id="projectSelect"></select>
+            <label class="project-picker">
+              Project search
+              <input id="projectSearch" type="search" placeholder="Type project name or postal code…" autocomplete="off" />
+              <select id="projectSelect" size="8"></select>
             </label>
           </div>
           <div class="cards small" id="projectCards"></div>
           <div class="grid two">
             <div>
-              <h3>Lifecycle</h3>
+              <h3>Active inventory</h3>
+              <canvas id="projectActiveChart"></canvas>
+              <h3>Listing movement</h3>
               <canvas id="projectLifecycleChart"></canvas>
             </div>
             <div>
-              <h3>Pressure and pricing</h3>
+              <h3>Pressure score</h3>
               <canvas id="projectPressureChart"></canvas>
+              <h3>Stale-listing rate</h3>
+              <canvas id="projectRatesChart"></canvas>
+              <h3>Average PSF</h3>
+              <canvas id="projectPricingChart"></canvas>
             </div>
           </div>
           <h3>Weekly metrics</h3>
@@ -168,6 +175,6 @@
       <span>Generated from compact analytics tables. No raw portal payloads are embedded.</span>
     </footer>
 
-    <script src="app.js?v=20260501-1225"></script>
+    <script src="app.js?v=20260501-1245"></script>
   </body>
 </html>

@@ -322,11 +322,10 @@ def render_project_detail(db_path: str, min_listings: int) -> None:
         return
 
     labels = {
-        f"{row.project_name} — {row.district_text} "
-        f"(score {row.pressure_score:.1f}, {int(row.active_listings):,} active)": row.project_uid
+        f"{row.project_name} (score {row.pressure_score:.1f}, {int(row.active_listings):,} active)": row.project_uid
         for row in options.itertuples(index=False)
     }
-    selected_label = st.selectbox("Project", list(labels.keys()))
+    selected_label = st.selectbox("Project search", list(labels.keys()))
     project_uid = labels[selected_label]
 
     trend = load_project_trend(db_path, project_uid)
@@ -344,18 +343,28 @@ def render_project_detail(db_path: str, min_listings: int) -> None:
     c5.metric("Stale share", f"{latest.stale_60d_pct:.1f}%")
 
     chart_df = trend.set_index("snapshot_week_id")
+    movement_chart = blank_first_snapshot_movements(
+        chart_df, ["new_listings", "disappeared_listings", "price_cut_listings"]
+    )
     left, right = st.columns(2)
     with left:
-        st.caption("Listing lifecycle")
-        st.line_chart(
-            chart_df[["active_listings", "new_listings", "disappeared_listings", "price_cut_listings"]]
-        )
+        st.caption("Active inventory")
+        st.line_chart(chart_df[["active_listings"]])
+        st.caption("Listing movement")
+        st.line_chart(movement_chart[["new_listings", "disappeared_listings", "price_cut_listings"]])
     with right:
-        st.caption("Pressure, pricing, and concentration")
-        st.line_chart(chart_df[["pressure_score", "avg_psf", "stale_60d_pct", "top_agent_pct"]])
+        st.caption("Pressure score")
+        st.line_chart(chart_df[["pressure_score"]])
+        st.caption("Stale-listing rate")
+        st.line_chart(chart_df[["stale_60d_pct"]])
+        st.caption("Average PSF")
+        st.line_chart(chart_df[["avg_psf"]])
 
     with st.expander("Project weekly metrics", expanded=False):
-        st.dataframe(trend, use_container_width=True, hide_index=True)
+        trend_display = blank_first_snapshot_movements(
+            trend, ["new_listings", "disappeared_listings", "price_cut_listings"]
+        )
+        st.dataframe(trend_display, use_container_width=True, hide_index=True)
 
     st.caption("Recent project price-cut events")
     st.dataframe(cuts, use_container_width=True, hide_index=True)

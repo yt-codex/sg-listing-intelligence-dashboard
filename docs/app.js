@@ -5,6 +5,8 @@ let charts = {};
 let selectedWeek;
 let selectedType = "SALE";
 let selectedSegment = "PRIVATE_NON_LANDED";
+let projectOptionRows = [];
+let selectedProjectUid = null;
 
 function n(value) {
   return value === null || value === undefined || Number.isNaN(Number(value)) ? 0 : Number(value);
@@ -170,21 +172,59 @@ function renderOverview() {
   ]);
 }
 
-function projectLabel(row) {
-  const level = row.project_group_type === "postal_code" ? `postal ${row.postal_code}` : row.project_group_type || "project";
-  return `${row.project_name} — ${level} — ${row.district_text} (${fmtNum(row.active_listings)} active, score ${fmtNum(row.pressure_score, 1)})`;
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[ch]));
 }
 
-function setupProjectSelect() {
+function projectLabel(row) {
+  const postal = row.project_group_type === "postal_code" && row.postal_code ? `, postal ${row.postal_code}` : "";
+  return `${row.project_name}${postal} (${fmtNum(row.active_listings)} active, score ${fmtNum(row.pressure_score, 1)})`;
+}
+
+function projectSearchText(row) {
+  return [row.project_name, row.postal_code, row.district_text, row.region_text]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function renderProjectOptions() {
   const select = document.getElementById("projectSelect");
-  const latestRows = byWeek(data.projects).filter((r) => r.project_uid);
-  select.innerHTML = latestRows.map((r) => `<option value="${r.project_uid}">${projectLabel(r)}</option>`).join("");
-  select.onchange = renderProjectDetail;
+  const query = document.getElementById("projectSearch").value.trim().toLowerCase();
+  const tokens = query.split(/\s+/).filter(Boolean);
+  const rows = tokens.length
+    ? projectOptionRows.filter((row) => tokens.every((token) => projectSearchText(row).includes(token)))
+    : projectOptionRows;
+  select.innerHTML = rows.map((r) => `<option value="${escapeHtml(r.project_uid)}">${escapeHtml(projectLabel(r))}</option>`).join("");
+  if (!rows.length) {
+    selectedProjectUid = null;
+    document.getElementById("projectCards").innerHTML = `<p class="subtle">No matching projects.</p>`;
+    return;
+  }
+  if (!rows.some((r) => r.project_uid === selectedProjectUid)) {
+    selectedProjectUid = rows[0].project_uid;
+  }
+  select.value = selectedProjectUid;
   renderProjectDetail();
 }
 
+function setupProjectSelect() {
+  const search = document.getElementById("projectSearch");
+  const select = document.getElementById("projectSelect");
+  projectOptionRows = byWeek(data.projects).filter((r) => r.project_uid);
+  if (!projectOptionRows.some((r) => r.project_uid === selectedProjectUid)) {
+    selectedProjectUid = projectOptionRows[0]?.project_uid ?? null;
+  }
+  search.oninput = renderProjectOptions;
+  select.onchange = () => {
+    selectedProjectUid = select.value;
+    renderProjectDetail();
+  };
+  renderProjectOptions();
+}
+
 function renderProjectDetail() {
-  const projectUid = document.getElementById("projectSelect").value;
+  const projectUid = selectedProjectUid;
   const trend = data.projectTrends.filter((r) => r.project_uid === projectUid && r.listing_type === selectedType && r.property_segment === selectedSegment);
   if (!trend.length) return;
   const latest = trend[trend.length - 1];
@@ -197,25 +237,31 @@ function renderProjectDetail() {
   ].join("");
 
   const labels = trend.map((r) => r.snapshot_week_id);
-  lineChart("projectLifecycleChart", labels, [
-    { label: "Active", data: trend.map((r) => n(r.active_listings)) },
-    { label: "New", data: trend.map((r) => n(r.new_listings)) },
-    { label: "Disappeared", data: trend.map((r) => n(r.disappeared_listings)) },
-    { label: "Cuts", data: trend.map((r) => n(r.price_cut_listings)) },
+  lineChart("projectActiveChart", labels, [
+    { label: "Active listings", data: trend.map((r) => n(r.active_listings)) },
   ]);
+  lineChart("projectLifecycleChart", labels, [
+    { label: "New", data: trend.map((_, idx) => movementValue(trend, idx, "new_listings")) },
+    { label: "Disappeared", data: trend.map((_, idx) => movementValue(trend, idx, "disappeared_listings")) },
+    { label: "Cuts", data: trend.map((_, idx) => movementValue(trend, idx, "price_cut_listings")) },
+  ], { beginAtZero: true });
   lineChart("projectPressureChart", labels, [
     { label: "Pressure", data: trend.map((r) => n(r.pressure_score)) },
-    { label: "Avg PSF", data: trend.map((r) => n(r.avg_psf)) },
+  ]);
+  lineChart("projectRatesChart", labels, [
     { label: "Stale 60d %", data: trend.map((r) => n(r.stale_60d_share) * 100) },
+  ], { beginAtZero: true });
+  lineChart("projectPricingChart", labels, [
+    { label: "Avg PSF", data: trend.map((r) => n(r.avg_psf)) },
   ]);
 
   table("projectTrendTable", trend, [
     { key: "snapshot_week_id", label: "Week" },
     { key: "pressure_score", label: "Score", num: true, format: (v) => fmtNum(v, 1) },
     { key: "active_listings", label: "Active", num: true, format: fmtNum },
-    { key: "new_listings", label: "New", num: true, format: fmtNum },
-    { key: "disappeared_listings", label: "Gone", num: true, format: fmtNum },
-    { key: "price_cut_listings", label: "Cuts", num: true, format: fmtNum },
+    { key: "new_listings", label: "New", num: true, format: fmtMovement },
+    { key: "disappeared_listings", label: "Gone", num: true, format: fmtMovement },
+    { key: "price_cut_listings", label: "Cuts", num: true, format: fmtMovement },
     { key: "avg_psf", label: "Avg PSF", num: true, format: fmtNum },
   ]);
 }

@@ -59,7 +59,8 @@ h3 { margin: 18px 0 10px; font-size: 15px; }
 label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
 .header-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
 
-select {
+select,
+input[type="search"] {
   min-width: 220px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -68,6 +69,10 @@ select {
   padding: 10px 12px;
   font: inherit;
 }
+.project-picker { min-width: min(480px, 100%); }
+.project-picker input,
+.project-picker select { width: 100%; }
+.project-picker select { min-height: 180px; }
 
 .cards { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .cards.small { grid-template-columns: repeat(5, minmax(120px, 1fr)); }
@@ -109,7 +114,8 @@ select {
 .project-toolbar { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
 .chart-note { margin-bottom: 12px; line-height: 1.4; }
 canvas { width: 100%; max-height: 260px; }
-#activeInventoryChart, #lifecycleChart, #ratesChart, #pricingChart { max-height: 220px; }
+#activeInventoryChart, #lifecycleChart, #ratesChart, #pricingChart,
+#projectActiveChart, #projectLifecycleChart, #projectPressureChart, #projectRatesChart, #projectPricingChart { max-height: 220px; }
 
 .table-wrap { overflow: auto; max-height: 620px; border: 1px solid var(--line); border-radius: 12px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; }
