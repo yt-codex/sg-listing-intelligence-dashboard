@@ -36,7 +36,7 @@ function destroyChart(id) {
   }
 }
 
-function lineChart(id, labels, series) {
+function lineChart(id, labels, series, options = {}) {
   destroyChart(id);
   const ctx = document.getElementById(id);
   charts[id] = new Chart(ctx, {
@@ -49,6 +49,7 @@ function lineChart(id, labels, series) {
         borderWidth: 2,
         tension: 0.25,
         pointRadius: 2,
+        spanGaps: false,
       })),
     },
     options: {
@@ -56,9 +57,25 @@ function lineChart(id, labels, series) {
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { position: "bottom" } },
-      scales: { y: { beginAtZero: false } },
+      scales: { y: { beginAtZero: options.beginAtZero ?? false } },
     },
   });
+}
+
+function movementValue(rows, idx, key) {
+  return idx === 0 ? null : n(rows[idx][key]);
+}
+
+function isFirstSelectedSnapshot(rows) {
+  return rows.findIndex((r) => r.snapshot_week_id === selectedWeek) === 0;
+}
+
+function isFirstSnapshotRow(row) {
+  return row.snapshot_week_id === data.weeks?.[0]?.snapshot_week_id;
+}
+
+function fmtMovement(value, row) {
+  return isFirstSnapshotRow(row) ? "n/a" : fmtNum(value);
 }
 
 function table(containerId, rows, columns) {
@@ -95,12 +112,15 @@ function setupTabs() {
 }
 
 function renderMetrics() {
-  const row = data.market.find((r) => r.snapshot_week_id === selectedWeek && r.listing_type === selectedType && r.property_segment === selectedSegment) || {};
+  const marketRows = data.market.filter((r) => r.listing_type === selectedType && r.property_segment === selectedSegment);
+  const row = marketRows.find((r) => r.snapshot_week_id === selectedWeek) || {};
+  const firstSnapshot = isFirstSelectedSnapshot(marketRows);
+  const movementMetric = (key) => firstSnapshot ? "n/a" : fmt.format(n(row[key]));
   document.getElementById("metricCards").innerHTML = [
     metric("Active listings", fmt.format(n(row.active_listings))),
-    metric("New", fmt.format(n(row.new_listings))),
-    metric("Disappeared", fmt.format(n(row.disappeared_listings))),
-    metric("Price cuts", fmt.format(n(row.price_cut_listings))),
+    metric("New", movementMetric("new_listings")),
+    metric("Disappeared", movementMetric("disappeared_listings")),
+    metric("Price cuts", movementMetric("price_cut_listings")),
     metric("Avg PSF", money.format(n(row.avg_psf))),
   ].join("");
 }
@@ -108,15 +128,19 @@ function renderMetrics() {
 function renderOverview() {
   const marketRows = data.market.filter((r) => r.listing_type === selectedType && r.property_segment === selectedSegment);
   const labels = marketRows.map((r) => r.snapshot_week_id);
-  lineChart("lifecycleChart", labels, [
-    { label: "Active", data: marketRows.map((r) => n(r.active_listings)) },
-    { label: "New", data: marketRows.map((r) => n(r.new_listings)) },
-    { label: "Disappeared", data: marketRows.map((r) => n(r.disappeared_listings)) },
-    { label: "Price cuts", data: marketRows.map((r) => n(r.price_cut_listings)) },
+  lineChart("activeInventoryChart", labels, [
+    { label: "Active listings", data: marketRows.map((r) => n(r.active_listings)) },
   ]);
-  lineChart("pricingChart", labels, [
-    { label: "Price-cut rate %", data: marketRows.map((r) => n(r.price_cut_rate) * 100) },
+  lineChart("lifecycleChart", labels, [
+    { label: "New", data: marketRows.map((_, idx) => movementValue(marketRows, idx, "new_listings")) },
+    { label: "Disappeared", data: marketRows.map((_, idx) => movementValue(marketRows, idx, "disappeared_listings")) },
+    { label: "Price cuts", data: marketRows.map((_, idx) => movementValue(marketRows, idx, "price_cut_listings")) },
+  ], { beginAtZero: true });
+  lineChart("ratesChart", labels, [
+    { label: "Price-cut rate %", data: marketRows.map((_, idx) => idx === 0 ? null : n(marketRows[idx].price_cut_rate) * 100) },
     { label: "Stale 60d %", data: marketRows.map((r) => n(r.stale_60d_share) * 100) },
+  ], { beginAtZero: true });
+  lineChart("pricingChart", labels, [
     { label: "Avg PSF", data: marketRows.map((r) => n(r.avg_psf)) },
   ]);
 
@@ -238,9 +262,9 @@ function renderEventTables() {
     { key: "property_segment", label: "Segment" },
     { key: "snapshot_week_id", label: "Week" },
     { key: "active_listings", label: "Active", num: true, format: fmtNum },
-    { key: "new_listings", label: "New", num: true, format: fmtNum },
-    { key: "disappeared_listings", label: "Gone", num: true, format: fmtNum },
-    { key: "price_cut_listings", label: "Cuts", num: true, format: fmtNum },
+    { key: "new_listings", label: "New", num: true, format: fmtMovement },
+    { key: "disappeared_listings", label: "Gone", num: true, format: fmtMovement },
+    { key: "price_cut_listings", label: "Cuts", num: true, format: fmtMovement },
     { key: "distinct_projects", label: "Projects", num: true, format: fmtNum },
     { key: "distinct_agents", label: "Agents", num: true, format: fmtNum },
   ]);

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SG Listing Intelligence</title>
-    <link rel="stylesheet" href="style.css?v=20260430-2335" />
+    <link rel="stylesheet" href="style.css?v=20260501-1225" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -54,10 +54,18 @@
         <div class="grid two">
           <article class="box">
             <h2>Market lifecycle</h2>
+            <p class="subtle chart-note">Inventory is separated from week-to-week movement because the levels are on different scales. First-snapshot movement is shown as n/a.</p>
+            <h3>Active inventory</h3>
+            <canvas id="activeInventoryChart"></canvas>
+            <h3>Listing movement</h3>
             <canvas id="lifecycleChart"></canvas>
           </article>
           <article class="box">
             <h2>Rates and pricing</h2>
+            <p class="subtle chart-note">Rates are shown separately from PSF so percentage movements are not flattened by price levels.</p>
+            <h3>Price-cut and stale-listing rates</h3>
+            <canvas id="ratesChart"></canvas>
+            <h3>Average PSF</h3>
             <canvas id="pricingChart"></canvas>
           </article>
         </div>
@@ -160,6 +168,6 @@
       <span>Generated from compact analytics tables. No raw portal payloads are embedded.</span>
     </footer>
 
-    <script src="app.js?v=20260430-2335"></script>
+    <script src="app.js?v=20260501-1225"></script>
   </body>
 </html>

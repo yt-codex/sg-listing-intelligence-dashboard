@@ -291,18 +291,26 @@ def load_agent_concentration(db_path: str, week: str, min_agent_listings: int) -
     )
 
 
-def metric_row(df: pd.DataFrame) -> None:
+def blank_first_snapshot_movements(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    chart_df = df.copy()
+    if not chart_df.empty:
+        chart_df.loc[chart_df.index[0], columns] = pd.NA
+    return chart_df
+
+
+def metric_row(df: pd.DataFrame, *, is_first_snapshot: bool = False) -> None:
     total_active = int(df["active_listings"].sum()) if not df.empty else 0
     total_new = int(df["new_listings"].sum()) if not df.empty else 0
     total_disappeared = int(df["disappeared_listings"].sum()) if not df.empty else 0
     total_cuts = int(df["price_cut_listings"].sum()) if not df.empty else 0
     avg_score = float(df["pressure_score"].mean()) if not df.empty else 0.0
+    movement = lambda value: "n/a" if is_first_snapshot else f"{value:,}"
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Active listings", f"{total_active:,}")
-    c2.metric("New", f"{total_new:,}")
-    c3.metric("Disappeared", f"{total_disappeared:,}")
-    c4.metric("Price cuts", f"{total_cuts:,}")
+    c2.metric("New", movement(total_new))
+    c3.metric("Disappeared", movement(total_disappeared))
+    c4.metric("Price cuts", movement(total_cuts))
     c5.metric("Avg pressure", f"{avg_score:.1f}")
 
 
@@ -383,7 +391,7 @@ def main() -> None:
     duplicates = load_duplicate_clusters(str(db_path), week)
     agents = load_agent_concentration(str(db_path), week, min_agent_listings)
 
-    metric_row(district)
+    metric_row(district, is_first_snapshot=week == weeks[0])
 
     tab_overview, tab_project, tab_events, tab_duplicates, tab_agents, tab_quality = st.tabs(
         [
@@ -399,18 +407,26 @@ def main() -> None:
     with tab_overview:
         st.subheader("Market trend")
         trend_chart = market_trend.set_index("snapshot_week_id")
+        movement_chart = blank_first_snapshot_movements(
+            trend_chart, ["new_listings", "disappeared_listings", "price_cut_listings", "price_cut_rate_pct"]
+        )
         left, right = st.columns(2)
         with left:
-            st.caption("Inventory lifecycle")
-            st.line_chart(
-                trend_chart[["active_listings", "new_listings", "disappeared_listings", "price_cut_listings"]]
-            )
+            st.caption("Active inventory")
+            st.line_chart(trend_chart[["active_listings"]])
+            st.caption("Listing movement")
+            st.line_chart(movement_chart[["new_listings", "disappeared_listings", "price_cut_listings"]])
         with right:
-            st.caption("Rates and pricing")
-            st.line_chart(trend_chart[["price_cut_rate_pct", "stale_60d_pct", "avg_psf"]])
+            st.caption("Price-cut and stale-listing rates")
+            st.line_chart(movement_chart[["price_cut_rate_pct", "stale_60d_pct"]])
+            st.caption("Average PSF")
+            st.line_chart(trend_chart[["avg_psf"]])
 
         with st.expander("Market weekly metrics", expanded=False):
-            st.dataframe(market_trend, use_container_width=True, hide_index=True)
+            market_display = blank_first_snapshot_movements(
+                market_trend, ["new_listings", "disappeared_listings", "price_cut_listings", "price_cut_rate_pct"]
+            )
+            st.dataframe(market_display, use_container_width=True, hide_index=True)
 
         st.subheader("District pressure")
         st.markdown(
