@@ -304,7 +304,9 @@ def metric_row(df: pd.DataFrame, *, is_first_snapshot: bool = False) -> None:
     total_disappeared = int(df["disappeared_listings"].sum()) if not df.empty else 0
     total_cuts = int(df["price_cut_listings"].sum()) if not df.empty else 0
     avg_score = float(df["pressure_score"].mean()) if not df.empty else 0.0
-    movement = lambda value: "n/a" if is_first_snapshot else f"{value:,}"
+
+    def movement(value: int) -> str:
+        return "n/a" if is_first_snapshot else f"{value:,}"
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Active listings", f"{total_active:,}")

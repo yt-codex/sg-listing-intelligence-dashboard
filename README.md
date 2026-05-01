@@ -1,19 +1,18 @@
 # SG Listing Intelligence Dashboard
 
-Lightweight MVP dashboard for turning weekly Singapore property portal snapshots into market intelligence signals: inventory pressure, price cuts, stale listings, and project/district-level ranking.
+Lightweight dashboard for turning weekly Singapore property portal snapshots into market-monitoring signals: where listing-side pressure is rising, where it is easing, which districts/projects are flashing unusual stress, and which leads deserve follow-up.
 
 This repo starts from the local PropertyGuru weekly snapshot SQLite database and builds a compact analytics database for the dashboard. The frontend reads only aggregated or panel-ready analytics tables; it does **not** embed raw listing payloads or unnecessary source data.
 
-## MVP scope
+## Monitoring scope
 
-The first version focuses on a **Project-level Listing Pressure Dashboard**:
+The dashboard is organised as a **market trend monitoring console**, not a raw stocktake of portal listings:
 
-- weekly active listings
-- new/disappeared listing counts
-- asking price and PSF medians
-- price-cut counts and cut sizes
-- stale listing share using first-seen age proxy
-- district/project ranking tables
+- Market Pulse: active inventory, price-cut rate, stale share, rising districts, and project hotspots.
+- Watchlist: new stress signals, persistent pressure, fastest deterioration, possible easing, and low-confidence-but-suspicious rows.
+- Trends & rankings: market lifecycle charts plus district and project/postal rankings with week-on-week movement, rank movement, confidence, and interpretation.
+- Project drilldown: pressure trend, lifecycle movement, rate trends, benchmark gap versus district pressure, and a short monitoring read.
+- Diagnostics: price-cut events, duplicate/shadow-inventory candidates, and agent-concentration evidence.
 
 ## Execution checklist
 

@@ -6,7 +6,14 @@
   --line: #dde3ea;
   --accent: #1457d9;
   --accent-soft: #e9f0ff;
-  --danger: #b42318;
+  --good: #067647;
+  --good-soft: #e7f8ef;
+  --warn: #b54708;
+  --warn-soft: #fff4e5;
+  --bad: #b42318;
+  --bad-soft: #feecea;
+  --low: #475467;
+  --low-soft: #f2f4f7;
   --shadow: 0 8px 24px rgba(24, 32, 42, 0.08);
 }
 
@@ -45,6 +52,15 @@ h3 { margin: 18px 0 10px; font-size: 15px; }
   padding: 10px 12px;
   line-height: 1.45;
 }
+.callout {
+  background: #f8fbff;
+  border: 1px solid #cfe0ff;
+  border-left: 5px solid var(--accent);
+  border-radius: 14px;
+  padding: 13px 14px;
+  color: #233348;
+  line-height: 1.5;
+}
 .signal-list {
   margin: 0 0 12px;
   padding-left: 20px;
@@ -54,7 +70,6 @@ h3 { margin: 18px 0 10px; font-size: 15px; }
 }
 .signal-list li { margin: 3px 0; }
 .signal-list strong { color: #334155; }
-}
 
 label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
 .header-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
@@ -89,6 +104,7 @@ input[type="search"] {
 }
 .metric .label { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 .metric .value { margin-top: 8px; font-size: 26px; font-weight: 850; letter-spacing: -0.03em; }
+.metric .note { margin-top: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
 
 .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
 .tab {
@@ -116,22 +132,39 @@ input[type="search"] {
   overflow: hidden;
 }
 .project-toolbar { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-#projectCards { margin-top: 0; margin-bottom: 24px; }
+#projectCards { margin-top: 0; margin-bottom: 18px; }
+#projectRead { margin-bottom: 20px; }
 .chart-note { margin-bottom: 12px; line-height: 1.4; }
 canvas { width: 100%; max-height: 260px; }
 #activeInventoryChart, #lifecycleChart, #ratesChart, #pricingChart,
-#projectActiveChart, #projectLifecycleChart, #projectPressureChart, #projectRatesChart, #projectPricingChart { max-height: 220px; }
+#projectActiveChart, #projectLifecycleChart, #projectPressureChart, #projectRatesChart, #projectPricingChart,
+#pulseRatesChart, #pulseDistrictChart { max-height: 230px; }
 
 .table-wrap { overflow: auto; max-height: 620px; border: 1px solid var(--line); border-radius: 12px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; }
 th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
 th { position: sticky; top: 0; background: #f8fafc; z-index: 1; color: #334155; font-size: 12px; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-.badge { display: inline-block; padding: 3px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 800; }
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.badge.good { background: var(--good-soft); color: var(--good); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.bad { background: var(--bad-soft); color: var(--bad); }
+.badge.low { background: var(--low-soft); color: var(--low); }
+.badge.neutral { background: #eef2f7; color: #344054; }
 
 @media (max-width: 900px) {
   header { display: block; }
   .header-actions { margin-top: 18px; }
   .cards, .cards.small, .grid.two { grid-template-columns: 1fr; }
   select { width: 100%; }
+  th, td { white-space: normal; }
 }

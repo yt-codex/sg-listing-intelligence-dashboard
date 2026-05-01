@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SG Listing Intelligence</title>
-    <link rel="stylesheet" href="style.css?v=20260501-1625" />
+    <link rel="stylesheet" href="style.css?v=20260502-monitoring" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   </head>
   <body>
     <header>
       <div>
-        <p class="eyebrow">Property listing intelligence</p>
+        <p class="eyebrow">Market trend monitoring</p>
         <h1>SG Listing Intelligence Dashboard</h1>
-        <p class="subtle">Static GitHub Pages version powered by aggregate snapshot JSON.</p>
+        <p class="subtle">A weekly surveillance console for listing-side pressure, deterioration, easing, and unusual project / district signals.</p>
       </div>
       <div class="header-actions">
         <label>
@@ -42,15 +42,76 @@
       <section class="cards" id="metricCards"></section>
 
       <nav class="tabs" aria-label="Dashboard sections">
-        <button class="tab active" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="project">Project detail</button>
-        <button class="tab" data-tab="cuts">Price cuts</button>
-        <button class="tab" data-tab="duplicates">Duplicate candidates</button>
-        <button class="tab" data-tab="agents">Agent concentration</button>
+        <button class="tab active" data-tab="pulse">Pulse</button>
+        <button class="tab" data-tab="watchlist">Watchlist</button>
+        <button class="tab" data-tab="overview">Trends & rankings</button>
+        <button class="tab" data-tab="project">Project drilldown</button>
+        <button class="tab" data-tab="diagnostics">Diagnostics</button>
         <button class="tab" data-tab="quality">Data quality</button>
       </nav>
 
-      <section class="panel active" id="overview">
+      <section class="panel active" id="pulse">
+        <article class="box" id="pulseNarrative"></article>
+        <div class="grid two">
+          <article class="box">
+            <h2>Fastest district deterioration</h2>
+            <p class="subtle chart-note">Prioritises week-on-week pressure-score changes, not absolute inventory size.</p>
+            <canvas id="pulseDistrictChart"></canvas>
+            <div id="pulseDeteriorationTable"></div>
+          </article>
+          <article class="box">
+            <h2>Market pressure rates</h2>
+            <p class="subtle chart-note">Price-cut and stale-listing rates are the core early-warning signals for listing-side stress.</p>
+            <canvas id="pulseRatesChart"></canvas>
+          </article>
+        </div>
+        <div class="grid two">
+          <article class="box">
+            <h2>Current project hotspots</h2>
+            <p class="subtle chart-note">Top current project/postal pressure rows with at least five active listings.</p>
+            <div id="pulseHotspotsTable"></div>
+          </article>
+          <article class="box">
+            <h2>Districts easing</h2>
+            <p class="subtle chart-note">Largest pressure-score declines versus the prior snapshot.</p>
+            <div id="pulseEasingTable"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" id="watchlist">
+        <article class="box">
+          <h2>New stress signals</h2>
+          <p class="subtle explainer">Projects/postal groups newly entering high-pressure territory, jumping sharply in rank, or showing large score increases.</p>
+          <div id="newStressTable"></div>
+        </article>
+        <article class="box">
+          <h2>Persistent high pressure</h2>
+          <p class="subtle explainer">Rows that are high-pressure now and were already high-pressure in the prior snapshot.</p>
+          <div id="persistentStressTable"></div>
+        </article>
+        <div class="grid two">
+          <article class="box">
+            <h2>Fastest deterioration</h2>
+            <div id="deteriorationTable"></div>
+          </article>
+          <article class="box">
+            <h2>Possible easing / clearing</h2>
+            <div id="easingTable"></div>
+          </article>
+        </div>
+        <article class="box">
+          <h2>Low-confidence but suspicious</h2>
+          <p class="subtle explainer">Small-N or title-derived rows can still be useful leads, but they should not be treated as firm market signals without checking the underlying listings.</p>
+          <div id="lowConfidenceTable"></div>
+        </article>
+        <article class="box">
+          <h2>District watchlist</h2>
+          <div id="districtWatchTable"></div>
+        </article>
+      </section>
+
+      <section class="panel" id="overview">
         <div class="grid two">
           <article class="box">
             <h2>Market lifecycle</h2>
@@ -72,33 +133,20 @@
         <article class="box">
           <h2>District pressure ranking</h2>
           <p class="subtle explainer">
-            Think of this as a <strong>seller-stress / listing-oversupply signal</strong> for the selected week, market, and property segment. A higher score means the district has more visible listing-side pressure than peer districts.
+            A seller-stress / listing-oversupply signal for the selected week, market, and segment. Rows now include movement, rank changes, confidence, and a short reason so the table reads like a monitoring queue rather than a stocktake.
           </p>
-          <ul class="signal-list">
-            <li><strong>Many active listings</strong> → lots of competing units available.</li>
-            <li><strong>Many price cuts</strong> → sellers/agents are adjusting downward.</li>
-            <li><strong>Many stale listings</strong> → units are sitting unsold or unrented.</li>
-            <li><strong>Duplicate/shadow listings</strong> → the same stock may be aggressively marketed.</li>
-          </ul>
           <p class="subtle formula">
-            District score formula: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 25% duplicate candidates.
+            District score: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 25% duplicate candidates.
           </p>
           <div id="districtTable"></div>
         </article>
         <article class="box">
           <h2>Project / postal pressure ranking</h2>
           <p class="subtle explainer">
-            Same seller-stress / listing-oversupply signal, but at actual project level where available. If a row only has a marketing title rather than a true project, it falls back to postal-code grouping where possible. The table is sorted by active listings first, then pressure score.
+            Actual project rows are used where reliable. Title-only rows fall back to postal-code grouping where possible. Benchmark gaps compare project/postal pressure against the selected district.
           </p>
-          <ul class="signal-list">
-            <li><strong>Many active listings</strong> → many competing units in the project/postal area.</li>
-            <li><strong>Many price cuts</strong> → sellers/agents are adjusting downward.</li>
-            <li><strong>Many stale listings</strong> → units are sitting unsold or unrented.</li>
-            <li><strong>Duplicate/shadow listings</strong> → similar stock may be repeatedly marketed.</li>
-            <li><strong>Top-agent concentration</strong> → one agent may be pushing many similar units.</li>
-          </ul>
           <p class="subtle formula">
-            Project/postal score formula: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 10% top-agent share + 15% duplicate candidates.
+            Project/postal score: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 10% top-agent share + 15% duplicate candidates.
           </p>
           <div id="projectTable"></div>
         </article>
@@ -107,7 +155,7 @@
       <section class="panel" id="project">
         <article class="box">
           <div class="project-toolbar">
-            <h2>Project detail</h2>
+            <h2>Project drilldown</h2>
             <label class="project-picker">
               Project search
               <input id="projectSearch" type="search" placeholder="Type project name or postal code…" autocomplete="off" />
@@ -115,6 +163,7 @@
             </label>
           </div>
           <div class="cards small" id="projectCards"></div>
+          <div id="projectRead"></div>
           <div class="grid two">
             <div>
               <h3>Active inventory</h3>
@@ -125,33 +174,28 @@
             <div>
               <h3>Pressure score</h3>
               <canvas id="projectPressureChart"></canvas>
-              <h3>Stale-listing rate</h3>
+              <h3>Price-cut and stale rates</h3>
               <canvas id="projectRatesChart"></canvas>
               <h3>Average PSF</h3>
               <canvas id="projectPricingChart"></canvas>
             </div>
           </div>
-          <h3>Weekly metrics</h3>
+          <h3>Weekly metrics and interpretation</h3>
           <div id="projectTrendTable"></div>
         </article>
       </section>
 
-      <section class="panel" id="cuts">
+      <section class="panel" id="diagnostics">
         <article class="box">
           <h2>Largest price-cut events</h2>
+          <p class="subtle explainer">Diagnostic evidence behind price-cut acceleration signals. Parser-correction and room-rental basis-change cuts are excluded where flagged.</p>
           <div id="cutsTable"></div>
         </article>
-      </section>
-
-      <section class="panel" id="duplicates">
         <article class="box">
           <h2>Likely duplicate / shadow inventory clusters</h2>
-          <p class="subtle">Heuristic groups: same project, bedrooms, rounded area, rounded price, same agent.</p>
+          <p class="subtle">Heuristic groups: same project/postal group, bedrooms, rounded area, rounded price, same agent.</p>
           <div id="duplicatesTable"></div>
         </article>
-      </section>
-
-      <section class="panel" id="agents">
         <article class="box">
           <h2>Agent concentration by project</h2>
           <p class="subtle">Agent IDs/licences only; agent names are not retained in the lean analytics schema.</p>
@@ -172,9 +216,9 @@
     </main>
 
     <footer>
-      <span>Generated from compact analytics tables. No raw portal payloads are embedded.</span>
+      <span>Generated from compact analytics tables. No raw portal payloads are embedded. Signals are monitoring leads, not confirmed transaction outcomes.</span>
     </footer>
 
-    <script src="app.js?v=20260501-1248"></script>
+    <script src="app.js?v=20260502-monitoring"></script>
   </body>
 </html>
