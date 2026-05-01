@@ -188,14 +188,16 @@ function projectSearchText(row) {
     .toLowerCase();
 }
 
-function renderProjectOptions() {
+function renderProjectOptions({ open = false } = {}) {
   const select = document.getElementById("projectSelect");
-  const query = document.getElementById("projectSearch").value.trim().toLowerCase();
+  const search = document.getElementById("projectSearch");
+  const query = search.value.trim().toLowerCase();
   const tokens = query.split(/\s+/).filter(Boolean);
   const rows = tokens.length
     ? projectOptionRows.filter((row) => tokens.every((token) => projectSearchText(row).includes(token)))
     : projectOptionRows;
   select.innerHTML = rows.map((r) => `<option value="${escapeHtml(r.project_uid)}">${escapeHtml(projectLabel(r))}</option>`).join("");
+  select.classList.toggle("open", open && rows.length > 0);
   if (!rows.length) {
     selectedProjectUid = null;
     document.getElementById("projectCards").innerHTML = `<p class="subtle">No matching projects.</p>`;
@@ -208,6 +210,10 @@ function renderProjectOptions() {
   renderProjectDetail();
 }
 
+function hideProjectOptionsSoon() {
+  window.setTimeout(() => document.getElementById("projectSelect").classList.remove("open"), 150);
+}
+
 function setupProjectSelect() {
   const search = document.getElementById("projectSearch");
   const select = document.getElementById("projectSelect");
@@ -215,9 +221,14 @@ function setupProjectSelect() {
   if (!projectOptionRows.some((r) => r.project_uid === selectedProjectUid)) {
     selectedProjectUid = projectOptionRows[0]?.project_uid ?? null;
   }
-  search.oninput = renderProjectOptions;
+  search.onfocus = () => renderProjectOptions({ open: true });
+  search.oninput = () => renderProjectOptions({ open: true });
+  search.onblur = hideProjectOptionsSoon;
+  select.onblur = hideProjectOptionsSoon;
   select.onchange = () => {
     selectedProjectUid = select.value;
+    search.value = "";
+    select.classList.remove("open");
     renderProjectDetail();
   };
   renderProjectOptions();

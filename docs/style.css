@@ -72,7 +72,11 @@ input[type="search"] {
 .project-picker { min-width: min(480px, 100%); }
 .project-picker input,
 .project-picker select { width: 100%; }
-.project-picker select { min-height: 180px; }
+.project-picker select {
+  display: none;
+  min-height: 180px;
+}
+.project-picker select.open { display: block; }
 
 .cards { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 14px; margin-bottom: 18px; }
 .cards.small { grid-template-columns: repeat(5, minmax(120px, 1fr)); }
