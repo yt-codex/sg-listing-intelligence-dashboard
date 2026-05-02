@@ -302,9 +302,8 @@ function marketCurrentAndPrev() {
 function renderPulse() {
   const { current, prev, rows: marketRows } = marketCurrentAndPrev();
   const districts = currentDistricts();
-  const projects = currentProjects();
   const risingDistricts = districts.filter((r) => n(r.pressure_delta) >= 5).length;
-  const highPressureProjects = projects.filter((r) => n(r.pressure_percentile) >= 0.9 && n(r.active_listings) >= 5).length;
+  const highPressureDistricts = districts.filter((r) => n(r.pressure_percentile) >= 0.9).length;
   const activeDelta = prev ? n(current.active_listings) - n(prev.active_listings) : null;
   const cutRateDelta = prev ? n(current.price_cut_rate) - n(prev.price_cut_rate) : null;
   const staleDelta = prev ? n(current.stale_60d_share) - n(prev.stale_60d_share) : null;
@@ -314,22 +313,22 @@ function renderPulse() {
     metric("Price-cut rate", fmtPct(current.price_cut_rate), cutRateDelta === null ? "first observed week" : `${fmtPp(cutRateDelta)} WoW`),
     metric("Stale 60d share", fmtPct(current.stale_60d_share), staleDelta === null ? "first observed week" : `${fmtPp(staleDelta)} WoW`),
     metric("Rising districts", fmtNum(risingDistricts), "pressure +5 score or more"),
-    metric("Project hotspots", fmtNum(highPressureProjects), "top-decile pressure, N≥5"),
+    metric("High-pressure districts", fmtNum(highPressureDistricts), "top-decile district pressure"),
   ].join("");
 
   const topDeterioration = [...districts].filter((r) => r.pressure_delta !== null).sort((a, b) => n(b.pressure_delta) - n(a.pressure_delta)).slice(0, 5);
-  const topHotspots = projects.filter((r) => n(r.active_listings) >= 5).slice(0, 5);
+  const topPressure = districts.slice(0, 10);
   const easing = [...districts].filter((r) => r.pressure_delta !== null).sort((a, b) => n(a.pressure_delta) - n(b.pressure_delta)).slice(0, 5);
 
   document.getElementById("pulseNarrative").innerHTML = `
     <div class="callout">
       <strong>Monitoring read:</strong>
       ${prev ? `For ${escapeHtml(selectedWeek)}, active inventory moved ${fmtSigned(activeDelta)}, price-cut rate moved ${fmtPp(cutRateDelta)}, and stale-share moved ${fmtPp(staleDelta)} versus the prior snapshot.` : "This is the first snapshot for the selected segment, so movement signals are not yet available."}
-      The watchlist below prioritises changes, not just large stock counts.
+      This tab is district-level only: deterioration is rising pressure, current pressure is the highest composite stress score, and easing is falling pressure.
     </div>`;
 
   table("pulseDeteriorationTable", topDeterioration, monitorColumns("district"), { compact: true });
-  table("pulseHotspotsTable", topHotspots, monitorColumns("project"), { compact: true });
+  table("pulsePressureTable", topPressure, monitorColumns("district"), { compact: true });
   table("pulseEasingTable", easing, monitorColumns("district"), { compact: true });
 
   const labels = marketRows.map((r) => r.snapshot_week_id);
@@ -363,7 +362,6 @@ function monitorColumns(level) {
 }
 
 function renderWatchlist() {
-  const districts = currentDistricts();
   const projects = currentProjects();
   const candidateProjects = projects.filter((r) => n(r.active_listings) >= 3);
 
@@ -393,8 +391,6 @@ function renderWatchlist() {
   table("deteriorationTable", deterioration, monitorColumns("project"), { compact: true });
   table("easingTable", easing, monitorColumns("project"), { compact: true });
   table("lowConfidenceTable", lowConfidence, monitorColumns("project"), { compact: true });
-
-  table("districtWatchTable", districts.slice(0, 20), monitorColumns("district"), { compact: true });
 }
 
 function renderMetrics() {

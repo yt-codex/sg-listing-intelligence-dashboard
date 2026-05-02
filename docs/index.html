@@ -42,8 +42,8 @@
       <section class="cards" id="metricCards"></section>
 
       <nav class="tabs" aria-label="Dashboard sections">
-        <button class="tab active" data-tab="pulse">Pulse</button>
-        <button class="tab" data-tab="watchlist">Watchlist</button>
+        <button class="tab active" data-tab="pulse">District pulse</button>
+        <button class="tab" data-tab="watchlist">Project watchlist</button>
         <button class="tab" data-tab="overview">Trends & rankings</button>
         <button class="tab" data-tab="project">Project drilldown</button>
         <button class="tab" data-tab="diagnostics">Diagnostics</button>
@@ -52,6 +52,12 @@
 
       <section class="panel active" id="pulse">
         <article class="box" id="pulseNarrative"></article>
+        <article class="box">
+          <h2>How to read district signals</h2>
+          <p class="subtle explainer"><strong>Pressure</strong> is the composite listing-side stress score for a district: more active inventory, price cuts, stale listings, and duplicate/shadow candidates push it up.</p>
+          <p class="subtle explainer"><strong>Deterioration</strong> means the district pressure score has risen versus the prior weekly snapshot — a worse listing-side signal, not a transaction-price forecast.</p>
+          <p class="subtle explainer"><strong>Easing</strong> means the district pressure score has fallen versus the prior weekly snapshot. Treat it as possible clearing or lower seller stress, not proof that the market has recovered.</p>
+        </article>
         <div class="grid two">
           <article class="box">
             <h2>Fastest district deterioration</h2>
@@ -67,9 +73,9 @@
         </div>
         <div class="grid two">
           <article class="box">
-            <h2>Current project hotspots</h2>
-            <p class="subtle chart-note">Top current project/postal pressure rows with at least five active listings.</p>
-            <div id="pulseHotspotsTable"></div>
+            <h2>Current district pressure</h2>
+            <p class="subtle chart-note">Highest current district pressure scores for the selected market and property segment.</p>
+            <div id="pulsePressureTable"></div>
           </article>
           <article class="box">
             <h2>Districts easing</h2>
@@ -81,33 +87,36 @@
 
       <section class="panel" id="watchlist">
         <article class="box">
-          <h2>New stress signals</h2>
+          <h2>How to read project signals</h2>
+          <p class="subtle explainer"><strong>Pressure</strong> is the project/postal listing-side stress score: active inventory, price cuts, stale listings, top-agent concentration, and duplicate/shadow candidates.</p>
+          <p class="subtle explainer"><strong>Deterioration</strong> means a project/postal group’s pressure score rose week-on-week, so it may deserve inspection.</p>
+          <p class="subtle explainer"><strong>Easing</strong> means the score fell week-on-week. It is a lead for possible clearing, not a confirmed improvement in transacted prices.</p>
+          <p class="subtle explainer"><strong>Low confidence</strong> rows usually have small sample sizes or weaker project matching; use them as triage leads only.</p>
+        </article>
+        <article class="box">
+          <h2>New project stress signals</h2>
           <p class="subtle explainer">Projects/postal groups newly entering high-pressure territory, jumping sharply in rank, or showing large score increases.</p>
           <div id="newStressTable"></div>
         </article>
         <article class="box">
-          <h2>Persistent high pressure</h2>
+          <h2>Persistent project pressure</h2>
           <p class="subtle explainer">Rows that are high-pressure now and were already high-pressure in the prior snapshot.</p>
           <div id="persistentStressTable"></div>
         </article>
         <div class="grid two">
           <article class="box">
-            <h2>Fastest deterioration</h2>
+            <h2>Fastest project deterioration</h2>
             <div id="deteriorationTable"></div>
           </article>
           <article class="box">
-            <h2>Possible easing / clearing</h2>
+            <h2>Projects possibly easing / clearing</h2>
             <div id="easingTable"></div>
           </article>
         </div>
         <article class="box">
-          <h2>Low-confidence but suspicious</h2>
+          <h2>Low-confidence project leads</h2>
           <p class="subtle explainer">Small-N or title-derived rows can still be useful leads, but they should not be treated as firm market signals without checking the underlying listings.</p>
           <div id="lowConfidenceTable"></div>
-        </article>
-        <article class="box">
-          <h2>District watchlist</h2>
-          <div id="districtWatchTable"></div>
         </article>
       </section>
 
