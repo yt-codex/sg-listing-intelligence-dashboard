@@ -137,8 +137,13 @@ input[type="search"] {
 .chart-note { margin-bottom: 12px; line-height: 1.4; }
 canvas { width: 100%; max-height: 260px; }
 #activeInventoryChart, #lifecycleChart, #ratesChart, #pricingChart,
+#regionActiveInventoryChart, #regionPricingChart, #regionCutRateChart, #regionStaleRateChart,
 #projectActiveChart, #projectLifecycleChart, #projectPressureChart, #projectRatesChart, #projectPricingChart,
-#pulseRatesChart, #pulseDistrictChart { max-height: 230px; }
+#pulseRatesChart, #pulseDistrictChart {
+  display: block;
+  height: 230px;
+  max-height: 230px;
+}
 
 .table-wrap { overflow: auto; max-height: 620px; border: 1px solid var(--line); border-radius: 12px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; }
