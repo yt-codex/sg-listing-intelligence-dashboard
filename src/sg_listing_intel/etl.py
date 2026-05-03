@@ -7,7 +7,10 @@ from pathlib import Path
 
 PANEL_SQL = """
 CREATE TABLE listing_week_panel AS
-WITH search_dedup AS (
+WITH eligible_snapshot_weeks AS (
+    SELECT DISTINCT snapshot_week_id
+    FROM eligible_source_snapshot_weeks
+), search_dedup AS (
     SELECT *
     FROM (
         SELECT
@@ -17,6 +20,8 @@ WITH search_dedup AS (
                 ORDER BY COALESCE(s.scraped_at, s.snapshot_date) DESC, s.run_id DESC
             ) AS rn
         FROM source.search_snapshot s
+        JOIN eligible_snapshot_weeks ew
+            ON ew.snapshot_week_id = s.snapshot_week_id
         WHERE s.price_value IS NOT NULL
     )
     WHERE rn = 1
@@ -613,6 +618,23 @@ INDEX_SQL = [
 
 
 def _prepare_source_helpers(con: sqlite3.Connection) -> None:
+    con.execute(
+        """
+        CREATE TEMP TABLE eligible_source_snapshot_weeks AS
+        SELECT DISTINCT snapshot_week_id
+        FROM source.search_snapshot
+        WHERE snapshot_week_id GLOB 'sg-week-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        """
+    )
+    if con.execute("SELECT COUNT(*) FROM eligible_source_snapshot_weeks").fetchone()[0] == 0:
+        con.execute(
+            """
+            INSERT INTO eligible_source_snapshot_weeks
+            SELECT DISTINCT snapshot_week_id
+            FROM source.search_snapshot
+            """
+        )
+
     has_detail_project = con.execute(
         """
         SELECT 1

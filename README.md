@@ -133,6 +133,14 @@ The dashboard is designed for future weekly snapshot updates:
 make refresh
 ```
 
+To refresh the analytics DB and GitHub Pages static JSON in one step:
+
+```bash
+make refresh-from-snapshot
+```
+
+Set `DASHBOARD_AUTO_PUBLISH=1` to also commit and push changed static dashboard assets.
+
 Equivalent explicit command:
 
 ```bash
