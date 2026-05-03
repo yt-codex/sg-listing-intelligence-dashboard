@@ -477,6 +477,73 @@ FROM base b
 JOIN week_max w ON w.snapshot_week_id = b.snapshot_week_id AND w.listing_type = b.listing_type AND w.property_segment = b.property_segment;
 """
 
+REGION_SQL = """
+CREATE TABLE region_week_metrics AS
+WITH disappeared AS (
+    SELECT snapshot_week_id, listing_type, property_segment, region_text, COUNT(*) AS disappeared_listings
+    FROM disappeared_listing_events
+    GROUP BY snapshot_week_id, listing_type, property_segment, region_text
+), duplicate AS (
+    SELECT snapshot_week_id, listing_type, property_segment, region_text, SUM(candidate_listing_count) AS duplicate_candidate_listings
+    FROM duplicate_cluster_candidates
+    GROUP BY snapshot_week_id, listing_type, property_segment, region_text
+), base AS (
+    SELECT
+        p.snapshot_week_id,
+        MIN(p.snapshot_date) AS snapshot_date,
+        p.listing_type,
+        p.property_segment,
+        p.region_text,
+        COUNT(*) AS active_listings,
+        SUM(p.is_new_this_week) AS new_listings,
+        COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
+        SUM(p.is_clean_price_cut) AS price_cut_listings,
+        ROUND(SUM(p.is_clean_price_cut) * 1.0 / COUNT(*), 4) AS price_cut_rate,
+        ROUND(AVG(p.is_stale_60d), 4) AS stale_60d_share,
+        ROUND(AVG(p.is_stale_90d), 4) AS stale_90d_share,
+        ROUND(AVG(p.price_value), 2) AS avg_price,
+        ROUND(AVG(p.price_per_area_value), 2) AS avg_psf,
+        COUNT(DISTINCT p.district_text) AS distinct_districts,
+        COUNT(DISTINCT p.project_uid) AS distinct_projects,
+        COUNT(DISTINCT p.agent_id) AS distinct_agents,
+        COUNT(DISTINCT p.agency_id) AS distinct_agencies,
+        COALESCE(du.duplicate_candidate_listings, 0) AS duplicate_candidate_listings
+    FROM listing_week_panel p
+    LEFT JOIN disappeared d
+        ON d.snapshot_week_id = p.snapshot_week_id
+        AND d.listing_type = p.listing_type
+        AND d.property_segment = p.property_segment
+        AND d.region_text = p.region_text
+    LEFT JOIN duplicate du
+        ON du.snapshot_week_id = p.snapshot_week_id
+        AND du.listing_type = p.listing_type
+        AND du.property_segment = p.property_segment
+        AND du.region_text = p.region_text
+    GROUP BY p.snapshot_week_id, p.listing_type, p.property_segment, p.region_text
+), week_max AS (
+    SELECT
+        snapshot_week_id,
+        listing_type,
+        property_segment,
+        MAX(active_listings) AS max_active_listings,
+        MAX(price_cut_rate) AS max_price_cut_rate,
+        MAX(duplicate_candidate_listings) AS max_duplicate_candidate_listings
+    FROM base
+    GROUP BY snapshot_week_id, listing_type, property_segment
+)
+SELECT
+    b.*,
+    ROUND(
+        COALESCE(10.0 * b.active_listings / NULLIF(w.max_active_listings, 0), 0)
+        + COALESCE(35.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0), 0)
+        + 30.0 * b.stale_60d_share
+        + COALESCE(25.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0), 0),
+        2
+    ) AS pressure_score
+FROM base b
+JOIN week_max w ON w.snapshot_week_id = b.snapshot_week_id AND w.listing_type = b.listing_type AND w.property_segment = b.property_segment;
+"""
+
 PRICE_CUT_SQL = """
 CREATE TABLE price_cut_events AS
 SELECT
@@ -608,6 +675,7 @@ INDEX_SQL = [
     "CREATE INDEX idx_panel_week_project ON listing_week_panel(snapshot_week_id, project_uid)",
     "CREATE INDEX idx_panel_listing_week ON listing_week_panel(listing_id, snapshot_week_id)",
     "CREATE INDEX idx_project_week ON project_week_metrics(snapshot_week_id, pressure_score)",
+    "CREATE INDEX idx_region_week ON region_week_metrics(snapshot_week_id, pressure_score)",
     "CREATE INDEX idx_district_week ON district_week_metrics(snapshot_week_id, pressure_score)",
     "CREATE INDEX idx_price_cut_week ON price_cut_events(snapshot_week_id, price_change_pct)",
     "CREATE INDEX idx_disappeared_week_project ON disappeared_listing_events(snapshot_week_id, project_uid)",
@@ -688,6 +756,7 @@ def build_analytics_db(source: Path, output: Path) -> None:
         con.executescript(DISAPPEARED_SQL)
         con.executescript(DUPLICATE_SQL)
         con.executescript(PROJECT_SQL)
+        con.executescript(REGION_SQL)
         con.executescript(DISTRICT_SQL)
         con.executescript(PRICE_CUT_SQL)
         con.executescript(MARKET_WEEK_SQL)

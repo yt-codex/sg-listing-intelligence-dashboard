@@ -27,6 +27,14 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
 
         metadata = rows(con, "SELECT * FROM etl_metadata")
         market = rows(con, "SELECT * FROM market_week_metrics ORDER BY snapshot_week_id, listing_type, property_segment")
+        regions = rows(
+            con,
+            """
+            SELECT *
+            FROM region_week_metrics
+            ORDER BY snapshot_week_id, pressure_score DESC, active_listings DESC
+            """,
+        )
         districts = rows(
             con,
             """
@@ -137,6 +145,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
         "latestWeek": latest_week,
         "weeks": weeks,
         "market": market,
+        "regions": regions,
         "districts": districts,
         "projects": projects,
         "projectTrends": project_trends,
@@ -151,6 +160,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
             "latestWeek": latest_week,
             "rowCounts": {
                 "market": len(market),
+                "regions": len(regions),
                 "districts": len(districts),
                 "projects": len(projects),
                 "projectTrends": len(project_trends),

@@ -140,9 +140,19 @@
           </article>
         </div>
         <article class="box">
+          <h2>Region pressure ranking</h2>
+          <p class="subtle explainer">
+            The mid-level read: broad enough to avoid project-level noise, but more actionable than a whole-market average. Use this as the first triage layer, then drill into districts or projects only where a region is moving.
+          </p>
+          <p class="subtle formula">
+            Region score: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 25% duplicate candidates.
+          </p>
+          <div id="regionTable"></div>
+        </article>
+        <article class="box">
           <h2>District pressure ranking</h2>
           <p class="subtle explainer">
-            A seller-stress / listing-oversupply signal for the selected week, market, and segment. Rows now include movement, rank changes, confidence, and a short reason so the table reads like a monitoring queue rather than a stocktake.
+            A more granular seller-stress / listing-oversupply signal for the selected week, market, and segment. Use after the region table points to where movement is concentrated.
           </p>
           <p class="subtle formula">
             District score: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 25% duplicate candidates.

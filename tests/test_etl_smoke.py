@@ -136,6 +136,7 @@ def test_build_analytics_db(tmp_path: Path) -> None:
     with sqlite3.connect(output) as con:
         panel_count = con.execute("SELECT COUNT(*) FROM listing_week_panel").fetchone()[0]
         cut_count = con.execute("SELECT COUNT(*) FROM price_cut_events").fetchone()[0]
+        region_count = con.execute("SELECT COUNT(*) FROM region_week_metrics").fetchone()[0]
         project_count = con.execute("SELECT COUNT(*) FROM project_week_metrics").fetchone()[0]
         postal_group = con.execute(
             """
@@ -147,5 +148,6 @@ def test_build_analytics_db(tmp_path: Path) -> None:
 
     assert panel_count == 5
     assert cut_count == 1
+    assert region_count == 3
     assert project_count == 3
     assert postal_group == ("Postal 456789", "postal_code", "456789", 2)

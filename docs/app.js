@@ -229,6 +229,11 @@ function enrichRows(rows, keyFn, level) {
 }
 
 function confidence(row, level) {
+  if (level === "region") {
+    if (n(row.active_listings) >= 200) return "High";
+    if (n(row.active_listings) >= 75) return "Medium";
+    return "Low";
+  }
   if (level === "district") {
     if (n(row.active_listings) >= 40) return "High";
     if (n(row.active_listings) >= 15) return "Medium";
@@ -279,6 +284,12 @@ function projectVsDistrict(row) {
 
 function currentDistricts() {
   return enrichRows(data.districts, (r) => r.district_code || r.district_text, "district")
+    .filter((r) => r.snapshot_week_id === selectedWeek)
+    .sort((a, b) => n(b.pressure_score) - n(a.pressure_score));
+}
+
+function currentRegions() {
+  return enrichRows(data.regions || [], (r) => r.region_text, "region")
     .filter((r) => r.snapshot_week_id === selectedWeek)
     .sort((a, b) => n(b.pressure_score) - n(a.pressure_score));
 }
@@ -343,9 +354,9 @@ function renderPulse() {
 }
 
 function monitorColumns(level) {
-  const nameKey = level === "district" ? "district_text" : "project_name";
+  const nameKey = level === "region" ? "region_text" : level === "district" ? "district_text" : "project_name";
   const cols = [
-    { key: nameKey, label: level === "district" ? "District" : "Project / postal group" },
+    { key: nameKey, label: level === "region" ? "Region" : level === "district" ? "District" : "Project / postal group" },
   ];
   if (level === "project") cols.push({ key: "district_text", label: "District" });
   cols.push(
@@ -399,6 +410,7 @@ function renderMetrics() {
 
 function renderOverview() {
   const marketRows = currentMarketRows();
+  const regionRows = currentRegions();
   const labels = marketRows.map((r) => r.snapshot_week_id);
   lineChart("activeInventoryChart", labels, [
     { label: "Active listings", data: marketRows.map((r) => n(r.active_listings)) },
@@ -414,6 +426,21 @@ function renderOverview() {
   ], { beginAtZero: true });
   lineChart("pricingChart", labels, [
     { label: "Avg PSF", data: marketRows.map((r) => n(r.avg_psf)) },
+  ]);
+
+  table("regionTable", regionRows, [
+    { key: "region_text", label: "Region" },
+    { key: "pressure_score", label: "Score", num: true, format: (v) => fmtNum(v, 1) },
+    { key: "pressure_delta", label: "WoW score", num: true, format: (v) => directionBadge(v) },
+    { key: "pressure_rank", label: "Rank", num: true, format: (v, r) => r.rank_move ? `#${fmtNum(v)} (${fmtSigned(r.rank_move)})` : `#${fmtNum(v)}` },
+    { key: "active_listings", label: "Active", num: true, format: fmtNum },
+    { key: "active_delta", label: "Active Δ", num: true, format: fmtSigned },
+    { key: "price_cut_rate", label: "Cut %", num: true, format: fmtPct },
+    { key: "stale_60d_share", label: "Stale 60d %", num: true, format: fmtPct },
+    { key: "duplicate_candidate_listings", label: "Dupes", num: true, format: fmtNum },
+    { key: "distinct_districts", label: "Districts", num: true, format: fmtNum },
+    { key: "confidence", label: "Confidence", format: confidenceBadge },
+    { key: "reason", label: "Read", format: (_, r) => escapeHtml(signalReasons(r)) },
   ]);
 
   table("districtTable", currentDistricts(), [
