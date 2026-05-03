@@ -304,6 +304,30 @@ function currentMarketRows() {
   return selectedRows(data.market).sort((a, b) => data.weeks.findIndex((w) => w.snapshot_week_id === a.snapshot_week_id) - data.weeks.findIndex((w) => w.snapshot_week_id === b.snapshot_week_id));
 }
 
+function regionTrendContext() {
+  const rows = selectedRows(data.regions || []);
+  const current = rows
+    .filter((r) => r.snapshot_week_id === selectedWeek)
+    .sort((a, b) => n(b.active_listings) - n(a.active_listings));
+  const regionNames = current.map((r) => r.region_text).slice(0, 10);
+  const rowMap = new Map(rows.map((r) => [`${r.snapshot_week_id}|${r.region_text}`, r]));
+  return {
+    labels: data.weeks.map((w) => w.snapshot_week_id),
+    regionNames,
+    rowMap,
+  };
+}
+
+function regionTrendSeries(context, key, transform = (value) => n(value)) {
+  return context.regionNames.map((region) => ({
+    label: region,
+    data: context.labels.map((week) => {
+      const row = context.rowMap.get(`${week}|${region}`);
+      return row ? transform(row[key], row) : null;
+    }),
+  }));
+}
+
 function marketCurrentAndPrev() {
   const rows = currentMarketRows();
   const idx = rows.findIndex((r) => r.snapshot_week_id === selectedWeek);
@@ -412,6 +436,7 @@ function renderOverview() {
   const marketRows = currentMarketRows();
   const regionRows = currentRegions();
   const labels = marketRows.map((r) => r.snapshot_week_id);
+  const regionTrend = regionTrendContext();
   lineChart("activeInventoryChart", labels, [
     { label: "Active listings", data: marketRows.map((r) => n(r.active_listings)) },
   ]);
@@ -427,6 +452,11 @@ function renderOverview() {
   lineChart("pricingChart", labels, [
     { label: "Avg PSF", data: marketRows.map((r) => n(r.avg_psf)) },
   ]);
+
+  lineChart("regionActiveInventoryChart", regionTrend.labels, regionTrendSeries(regionTrend, "active_listings"));
+  lineChart("regionPricingChart", regionTrend.labels, regionTrendSeries(regionTrend, "avg_psf"));
+  lineChart("regionCutRateChart", regionTrend.labels, regionTrendSeries(regionTrend, "price_cut_rate", (value) => n(value) * 100), { beginAtZero: true });
+  lineChart("regionStaleRateChart", regionTrend.labels, regionTrendSeries(regionTrend, "stale_60d_share", (value) => n(value) * 100), { beginAtZero: true });
 
   table("regionTable", regionRows, [
     { key: "region_text", label: "Region" },
