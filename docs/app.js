@@ -455,7 +455,10 @@ function renderOverview() {
 
   lineChart("regionActiveInventoryChart", regionTrend.labels, regionTrendSeries(regionTrend, "active_listings"));
   lineChart("regionPricingChart", regionTrend.labels, regionTrendSeries(regionTrend, "avg_psf"));
-  lineChart("regionCutRateChart", regionTrend.labels, regionTrendSeries(regionTrend, "price_cut_rate", (value) => n(value) * 100), { beginAtZero: true });
+  lineChart("regionCutRateChart", regionTrend.labels.slice(1), regionTrendSeries(regionTrend, "price_cut_rate", (value) => n(value) * 100).map((series) => ({
+    ...series,
+    data: series.data.slice(1),
+  })), { beginAtZero: true });
   lineChart("regionStaleRateChart", regionTrend.labels, regionTrendSeries(regionTrend, "stale_60d_share", (value) => n(value) * 100), { beginAtZero: true });
 
   table("regionTable", regionRows, [
