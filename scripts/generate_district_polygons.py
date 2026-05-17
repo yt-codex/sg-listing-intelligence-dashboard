@@ -9,6 +9,7 @@ This script derives a lightweight choropleth geography from:
 
 Method: assign a fine lon/lat grid over Singapore land to the nearest postal-code
 point's district, dissolve grid cells by D-code, and simplify for browser use.
+Only the main island is retained for the dashboard map.
 """
 
 from __future__ import annotations
@@ -92,10 +93,22 @@ def grid_range(lo: float, hi: float, step: float):
         x += step
 
 
+def main_island_only(geometry):
+    """Return the largest contiguous land polygon, dropping offshore islands."""
+    if geometry.geom_type == "Polygon":
+        return geometry
+    if geometry.geom_type == "MultiPolygon":
+        return max(geometry.geoms, key=lambda geom: geom.area)
+    polygons = [geom for geom in getattr(geometry, "geoms", []) if geom.geom_type == "Polygon"]
+    if not polygons:
+        raise ValueError(f"Cannot extract main island from {geometry.geom_type}")
+    return max(polygons, key=lambda geom: geom.area)
+
+
 def main() -> None:
     ensure_sources()
     planning = json.loads(PLANNING_AREA_CACHE.read_text())
-    land = unary_union([shape(f["geometry"]) for f in planning["features"]])
+    land = main_island_only(unary_union([shape(f["geometry"]) for f in planning["features"]]))
     prepared_land = prep(land)
     minx, miny, maxx, maxy = land.bounds
 
@@ -111,7 +124,7 @@ def main() -> None:
             lat = float(row["LATITUDE"])
         except (TypeError, ValueError, KeyError):
             continue
-        if 103.55 <= lon <= 104.15 and 1.15 <= lat <= 1.55:
+        if 103.55 <= lon <= 104.15 and 1.15 <= lat <= 1.55 and prepared_land.contains(Point(lon, lat)):
             points.append((lon, lat))
             districts.append(district)
 
@@ -142,7 +155,7 @@ def main() -> None:
         "type": "FeatureCollection",
         "metadata": {
             "name": "Derived Singapore postal district polygons",
-            "method": "Nearest-postal-code grid dissolved by SingPost postal-sector mapping; clipped to data.gov.sg URA Master Plan 2025 Planning Area Boundary (No Sea).",
+            "method": "Nearest-postal-code grid dissolved by SingPost postal-sector mapping; clipped to the largest contiguous polygon from data.gov.sg URA Master Plan 2025 Planning Area Boundary (No Sea), so offshore islands are excluded.",
             "caveat": "Derived analytical geography, not an official postal-district boundary dataset.",
             "sources": [
                 "data.gov.sg d_2cc750190544007400b2cfd5d7f53209 Master Plan 2025 Planning Area Boundary (No Sea)",
