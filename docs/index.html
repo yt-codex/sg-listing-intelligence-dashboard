@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SG Listing Intelligence</title>
-    <link rel="stylesheet" href="style.css?v=20260517-client-polish" />
+    <link rel="stylesheet" href="style.css?v=20260517-district-heatmap" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   </head>
   <body>
@@ -52,6 +52,11 @@
 
       <section class="panel active" id="pulse">
         <article class="box" id="pulseNarrative"></article>
+        <article class="box">
+          <h2>District pressure heatmap</h2>
+          <p class="subtle chart-note">Tile cartogram of mapped postal districts. Darker tiles indicate higher current listing-side pressure; the arrow shows week-on-week pressure movement.</p>
+          <div id="districtHeatmap"></div>
+        </article>
         <article class="box">
           <h2>How to read district signals</h2>
           <p class="subtle explainer"><strong>Pressure</strong> is the composite listing-side stress score for a district: more active inventory, price cuts, stale listings, and duplicate/shadow candidates push it up.</p>
@@ -259,6 +264,6 @@
       <span>Generated from compact analytics tables. No raw portal payloads are embedded. Signals are monitoring leads, not confirmed transaction outcomes.</span>
     </footer>
 
-    <script src="app.js?v=20260517-client-polish"></script>
+    <script src="app.js?v=20260517-district-heatmap"></script>
   </body>
 </html>

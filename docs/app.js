@@ -8,6 +8,14 @@ let selectedSegment = "PRIVATE_NON_LANDED";
 let projectOptionRows = [];
 let selectedProjectUid = null;
 
+const DISTRICT_TILE_LAYOUT = [
+  ["D27", "D26", "D28", "D19", "D18", "D17", null],
+  ["D25", "D23", "D20", "D12", "D14", "D16", null],
+  ["D24", "D21", "D11", "D10", "D15", "D13", "D07"],
+  ["D22", "D05", "D09", "D01", "D02", "D08", "D06"],
+  [null, "D04", "D03", null, null, null, null],
+];
+
 function n(value) {
   return value === null || value === undefined || Number.isNaN(Number(value)) ? 0 : Number(value);
 }
@@ -281,6 +289,13 @@ function directionBadge(value, suffix = "") {
   return badge("flat", "neutral");
 }
 
+function directionGlyph(value) {
+  if (value === null || value === undefined) return "•";
+  if (n(value) > 0) return "▲";
+  if (n(value) < 0) return "▼";
+  return "•";
+}
+
 function signalReasons(row) {
   const reasons = [];
   if (row.pressure_delta !== null && n(row.pressure_delta) >= 8) reasons.push(`pressure +${fmtNum(row.pressure_delta, 1)}`);
@@ -431,6 +446,7 @@ function renderPulse() {
   table("pulseDeteriorationTable", topDeterioration, monitorColumns("district"), { compact: true });
   table("pulsePressureTable", topPressure, monitorColumns("district"), { compact: true });
   table("pulseEasingTable", easing, monitorColumns("district"), { compact: true });
+  renderDistrictHeatmap(signalDistricts);
 
   const labels = chartLabels(marketRows);
   lineChart("pulseRatesChart", labels, rateSeries(marketRows), { beginAtZero: true });
@@ -438,6 +454,40 @@ function renderPulse() {
   barChart("pulseDistrictChart", topDeterioration.map((r) => r.district_text), [
     { label: "Pressure-score WoW change", data: topDeterioration.map((r) => n(r.pressure_delta)) },
   ], { horizontal: true });
+}
+
+function districtHeatTone(row) {
+  if (!row) return 0;
+  if (row.pressure_percentile !== null && row.pressure_percentile !== undefined) return Math.max(0, Math.min(1, n(row.pressure_percentile)));
+  return Math.max(0, Math.min(1, n(row.pressure_score) / 100));
+}
+
+function renderDistrictHeatmap(rows) {
+  const el = document.getElementById("districtHeatmap");
+  if (!el) return;
+  const byCode = new Map(rows.map((row) => [row.district_code, row]));
+  const cells = DISTRICT_TILE_LAYOUT.flatMap((districtRow) => districtRow.map((code) => {
+    if (!code) return `<div class="district-tile empty" aria-hidden="true"></div>`;
+    const row = byCode.get(code);
+    if (!row) return `<div class="district-tile missing"><strong>${code}</strong><span>No data</span></div>`;
+    const tone = districtHeatTone(row);
+    const alpha = 0.12 + tone * 0.72;
+    const textClass = tone > 0.62 ? " light" : "";
+    const moveClass = n(row.pressure_delta) > 0 ? "bad" : n(row.pressure_delta) < 0 ? "good" : "neutral";
+    const title = `${code} ${row.district_text}: score ${fmtNum(row.pressure_score, 1)}, WoW ${fmtSigned(row.pressure_delta, 1)}, active ${fmtNum(row.active_listings)}`;
+    return `
+      <div class="district-tile${textClass}" style="--heat-alpha:${alpha.toFixed(3)}" title="${escapeHtml(title)}">
+        <div class="district-code">${escapeHtml(code)}</div>
+        <div class="district-name">${escapeHtml(row.district_text)}</div>
+        <div class="district-score">${fmtNum(row.pressure_score, 1)}</div>
+        <div class="district-meta"><span class="move ${moveClass}">${directionGlyph(row.pressure_delta)} ${fmtNum(Math.abs(n(row.pressure_delta)), 1)}</span><span>${fmtNum(row.active_listings)} active</span></div>
+      </div>`;
+  })).join("");
+  el.innerHTML = `
+    <div class="district-heatmap">${cells}</div>
+    <div class="heatmap-legend">
+      <span>Lower pressure</span><span class="legend-ramp"></span><span>Higher pressure</span>
+    </div>`;
 }
 
 function monitorColumns(level) {
