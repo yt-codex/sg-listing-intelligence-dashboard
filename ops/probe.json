@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "status": "OK",
-  "last_run_time": "2026-05-17T13:37:35Z",
+  "last_run_time": "2026-05-17T13:38:01Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-05-16",
-    "lag_seconds": 135455.059438,
+    "lag_seconds": 135481.924296,
     "stale": false
   },
   "row_counts": {
