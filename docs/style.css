@@ -132,6 +132,20 @@ input[type="search"] {
   overflow: hidden;
 }
 .project-toolbar { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.selected-project {
+  margin: -6px 0 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.selected-project span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 #projectCards { margin-top: 0; margin-bottom: 18px; }
 #projectRead { margin-bottom: 20px; }
 .chart-note { margin-bottom: 12px; line-height: 1.4; }

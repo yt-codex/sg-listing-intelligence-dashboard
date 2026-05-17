@@ -580,6 +580,13 @@ function projectSearchText(row) {
     .toLowerCase();
 }
 
+function projectDisplayName(row) {
+  const parts = [row.project_name];
+  if (row.postal_code) parts.push(`postal ${row.postal_code}`);
+  if (row.district_text) parts.push(row.district_text);
+  return parts.filter(Boolean).join(" · ");
+}
+
 function renderProjectOptions({ open = false } = {}) {
   const select = document.getElementById("projectSelect");
   const search = document.getElementById("projectSearch");
@@ -633,11 +640,12 @@ function renderProjectDetail() {
   if (!trend.length) return;
   const latest = trend[trend.length - 1];
   const staleActive = hasStaleSignal(trend);
+  document.getElementById("selectedProjectTitle").innerHTML = `<span>Selected project</span>${escapeHtml(projectDisplayName(latest))}`;
   document.getElementById("projectCards").innerHTML = [
+    metric("Selected project", escapeHtml(latest.project_name), [latest.district_text, latest.postal_code ? `postal ${latest.postal_code}` : null].filter(Boolean).join(" · ")),
     metric("Pressure", fmtNum(latest.pressure_score, 1), latest.pressure_delta === null ? "first observed" : `${fmtSigned(latest.pressure_delta, 1)} WoW`),
     metric("Rank", latest.pressure_rank ? `#${fmtNum(latest.pressure_rank)}` : "—", latest.rank_move ? `${fmtSigned(latest.rank_move)} places` : ""),
     metric("Confidence", confidenceBadge(latest.confidence), `${fmtNum(latest.active_listings)} active listings`),
-    metric("Vs district", projectVsDistrict(latest), "pressure-score gap"),
     staleActive
       ? metric("Stale 60d", fmtPct(latest.stale_60d_share), latest.stale_delta === null ? "" : `${fmtPp(latest.stale_delta)} WoW`)
       : metric("Listing-age signal", "Not active", "stale-60d all zero"),
