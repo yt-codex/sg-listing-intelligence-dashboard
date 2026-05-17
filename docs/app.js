@@ -508,9 +508,9 @@ function pathForGeometry(geometry, bounds, width, height) {
 
 function heatColor(tone) {
   const stops = [
-    [255, 247, 237],
-    [245, 158, 11],
-    [180, 35, 24],
+    [238, 242, 247],
+    [133, 153, 176],
+    [18, 24, 38],
   ];
   const scaled = Math.max(0, Math.min(1, tone)) * 2;
   const idx = Math.min(1, Math.floor(scaled));
