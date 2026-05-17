@@ -7,14 +7,7 @@ let selectedType = "SALE";
 let selectedSegment = "PRIVATE_NON_LANDED";
 let projectOptionRows = [];
 let selectedProjectUid = null;
-
-const DISTRICT_TILE_LAYOUT = [
-  ["D27", "D26", "D28", "D19", "D18", "D17", null],
-  ["D25", "D23", "D20", "D12", "D14", "D16", null],
-  ["D24", "D21", "D11", "D10", "D15", "D13", "D07"],
-  ["D22", "D05", "D09", "D01", "D02", "D08", "D06"],
-  [null, "D04", "D03", null, null, null, null],
-];
+let districtPolygons;
 
 function n(value) {
   return value === null || value === undefined || Number.isNaN(Number(value)) ? 0 : Number(value);
@@ -446,7 +439,7 @@ function renderPulse() {
   table("pulseDeteriorationTable", topDeterioration, monitorColumns("district"), { compact: true });
   table("pulsePressureTable", topPressure, monitorColumns("district"), { compact: true });
   table("pulseEasingTable", easing, monitorColumns("district"), { compact: true });
-  renderDistrictHeatmap(signalDistricts);
+  renderDistrictChoropleth(signalDistricts);
 
   const labels = chartLabels(marketRows);
   lineChart("pulseRatesChart", labels, rateSeries(marketRows), { beginAtZero: true });
@@ -462,32 +455,113 @@ function districtHeatTone(row) {
   return Math.max(0, Math.min(1, n(row.pressure_score) / 100));
 }
 
-function renderDistrictHeatmap(rows) {
-  const el = document.getElementById("districtHeatmap");
+function coordinatesForGeometry(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === "Polygon") return geometry.coordinates;
+  if (geometry.type === "MultiPolygon") return geometry.coordinates.flat();
+  return [];
+}
+
+function geometryBounds(features) {
+  const bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  features.forEach((feature) => {
+    coordinatesForGeometry(feature.geometry).forEach((ring) => ring.forEach(([x, y]) => {
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    }));
+  });
+  return bounds;
+}
+
+function geometryCentroid(geometry) {
+  let sx = 0;
+  let sy = 0;
+  let count = 0;
+  coordinatesForGeometry(geometry).forEach((ring) => ring.forEach(([x, y]) => {
+    sx += x;
+    sy += y;
+    count += 1;
+  }));
+  return count ? [sx / count, sy / count] : [0, 0];
+}
+
+function projectPoint(x, y, bounds, width, height, padding = 18) {
+  const scale = Math.min((width - padding * 2) / (bounds.maxX - bounds.minX), (height - padding * 2) / (bounds.maxY - bounds.minY));
+  const usedW = (bounds.maxX - bounds.minX) * scale;
+  const usedH = (bounds.maxY - bounds.minY) * scale;
+  const offsetX = (width - usedW) / 2;
+  const offsetY = (height - usedH) / 2;
+  return [offsetX + (x - bounds.minX) * scale, height - offsetY - (y - bounds.minY) * scale];
+}
+
+function pathForGeometry(geometry, bounds, width, height) {
+  const polygonPath = (rings) => rings.map((ring) => ring.map(([x, y], idx) => {
+    const [px, py] = projectPoint(x, y, bounds, width, height);
+    return `${idx === 0 ? "M" : "L"}${px.toFixed(1)},${py.toFixed(1)}`;
+  }).join(" ") + " Z").join(" ");
+  if (geometry.type === "Polygon") return polygonPath(geometry.coordinates);
+  if (geometry.type === "MultiPolygon") return geometry.coordinates.map(polygonPath).join(" ");
+  return "";
+}
+
+function heatColor(tone) {
+  const stops = [
+    [255, 247, 237],
+    [245, 158, 11],
+    [180, 35, 24],
+  ];
+  const scaled = Math.max(0, Math.min(1, tone)) * 2;
+  const idx = Math.min(1, Math.floor(scaled));
+  const local = scaled - idx;
+  const rgb = stops[idx].map((start, i) => Math.round(start + (stops[idx + 1][i] - start) * local));
+  return `rgb(${rgb.join(",")})`;
+}
+
+function renderDistrictChoropleth(rows) {
+  const el = document.getElementById("districtChoropleth");
   if (!el) return;
+  if (!districtPolygons?.features?.length) {
+    el.innerHTML = `<p class="subtle">District geography is not available.</p>`;
+    return;
+  }
   const byCode = new Map(rows.map((row) => [row.district_code, row]));
-  const cells = DISTRICT_TILE_LAYOUT.flatMap((districtRow) => districtRow.map((code) => {
-    if (!code) return `<div class="district-tile empty" aria-hidden="true"></div>`;
+  const features = districtPolygons.features;
+  const bounds = geometryBounds(features);
+  const width = 980;
+  const height = 520;
+  const paths = features.map((feature) => {
+    const code = feature.properties.district_code;
     const row = byCode.get(code);
-    if (!row) return `<div class="district-tile missing"><strong>${code}</strong><span>No data</span></div>`;
     const tone = districtHeatTone(row);
-    const alpha = 0.12 + tone * 0.72;
-    const textClass = tone > 0.62 ? " light" : "";
-    const moveClass = n(row.pressure_delta) > 0 ? "bad" : n(row.pressure_delta) < 0 ? "good" : "neutral";
-    const title = `${code} ${row.district_text}: score ${fmtNum(row.pressure_score, 1)}, WoW ${fmtSigned(row.pressure_delta, 1)}, active ${fmtNum(row.active_listings)}`;
+    const title = row ? `${code} ${row.district_text}: score ${fmtNum(row.pressure_score, 1)}, WoW ${fmtSigned(row.pressure_delta, 1)}, active ${fmtNum(row.active_listings)}` : `${code}: no current data`;
+    const d = pathForGeometry(feature.geometry, bounds, width, height);
+    return `<path d="${d}" fill="${row ? heatColor(tone) : "#f8fafc"}" class="district-shape" tabindex="0" aria-label="${escapeHtml(title)}"><title>${escapeHtml(title)}</title></path>`;
+  }).join("");
+  const labels = features.map((feature) => {
+    const code = feature.properties.district_code;
+    const row = byCode.get(code);
+    if (!row) return "";
+    const [cx, cy] = geometryCentroid(feature.geometry);
+    const [x, y] = projectPoint(cx, cy, bounds, width, height);
     return `
-      <div class="district-tile${textClass}" style="--heat-alpha:${alpha.toFixed(3)}" title="${escapeHtml(title)}">
-        <div class="district-code">${escapeHtml(code)}</div>
-        <div class="district-name">${escapeHtml(row.district_text)}</div>
-        <div class="district-score">${fmtNum(row.pressure_score, 1)}</div>
-        <div class="district-meta"><span class="move ${moveClass}">${directionGlyph(row.pressure_delta)} ${fmtNum(Math.abs(n(row.pressure_delta)), 1)}</span><span>${fmtNum(row.active_listings)} active</span></div>
-      </div>`;
-  })).join("");
+      <g class="district-map-label" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">
+        <text class="code">${escapeHtml(code)}</text>
+      </g>`;
+  }).join("");
+  const caveat = escapeHtml(districtPolygons.metadata?.caveat || "Derived analytical geography, not official boundaries.");
   el.innerHTML = `
-    <div class="district-heatmap">${cells}</div>
+    <div class="district-map-wrap">
+      <svg class="district-map" viewBox="0 0 ${width} ${height}" role="img" aria-label="Singapore district pressure choropleth">
+        ${paths}
+        ${labels}
+      </svg>
+    </div>
     <div class="heatmap-legend">
       <span>Lower pressure</span><span class="legend-ramp"></span><span>Higher pressure</span>
-    </div>`;
+    </div>
+    <p class="subtle map-caveat">${caveat}</p>`;
 }
 
 function monitorColumns(level) {
@@ -793,7 +867,8 @@ function renderAll() {
 async function init() {
   setupTabs();
   const res = await fetch("assets/dashboard-data.json?v=20260503-region-charts-fix", { cache: "no-store" });
-  data = await res.json();
+  const geoRes = await fetch("assets/postal-districts-derived.geojson?v=20260517-derived-choropleth", { cache: "no-store" });
+  [data, districtPolygons] = await Promise.all([res.json(), geoRes.json()]);
   selectedWeek = data.latestWeek;
   const weekSelect = document.getElementById("weekSelect");
   weekSelect.innerHTML = data.weeks.map((w) => `<option value="${w.snapshot_week_id}">${w.snapshot_week_id}</option>`).join("");
