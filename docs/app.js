@@ -35,6 +35,17 @@ function fmtSigned(value, digits = 0) {
   return `${number > 0 ? "+" : ""}${fmtNum(number, digits)}`;
 }
 
+function weekLabel(weekId) {
+  const row = data?.weeks?.find((w) => w.snapshot_week_id === weekId);
+  const raw = row?.snapshot_date || String(weekId || "").replace("sg-week-", "");
+  const date = new Date(`${raw}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? String(weekId || "") : date.toLocaleDateString("en-SG", { month: "short", day: "numeric" });
+}
+
+function chartLabels(rowsOrWeekIds) {
+  return rowsOrWeekIds.map((row) => weekLabel(typeof row === "string" ? row : row.snapshot_week_id));
+}
+
 function metric(label, value, note = "") {
   return `<article class="metric"><div class="label">${label}</div><div class="value">${value}</div>${note ? `<div class="note">${note}</div>` : ""}</article>`;
 }
@@ -90,7 +101,10 @@ function lineChart(id, labels, series, options = {}) {
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { position: "bottom" } },
-      scales: { y: { beginAtZero: options.beginAtZero ?? false } },
+      scales: {
+        x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+        y: { beginAtZero: options.beginAtZero ?? false },
+      },
     },
   });
 }
@@ -107,7 +121,10 @@ function barChart(id, labels, series, options = {}) {
       maintainAspectRatio: false,
       indexAxis: options.horizontal ? "y" : "x",
       plugins: { legend: { position: "bottom" } },
-      scales: { x: { beginAtZero: true }, y: { beginAtZero: true } },
+      scales: {
+        x: { beginAtZero: true, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+        y: { beginAtZero: true },
+      },
     },
   });
 }
@@ -253,6 +270,10 @@ function confidenceBadge(value) {
   return badge(value, tone);
 }
 
+function tagList(tags) {
+  return `<span class="tag-list">${tags.map((tag) => badge(tag.text, tag.tone)).join("")}</span>`;
+}
+
 function directionBadge(value, suffix = "") {
   if (value === null || value === undefined) return badge("new", "neutral");
   if (n(value) > 0) return badge(`▲ ${fmtNum(value, 1)}${suffix}`, "bad");
@@ -272,6 +293,39 @@ function signalReasons(row) {
   if (!reasons.length && row.pressure_delta !== null && n(row.pressure_delta) < 0) reasons.push(`pressure easing ${fmtNum(row.pressure_delta, 1)}`);
   if (!reasons.length) reasons.push("monitor for next snapshot");
   return reasons.slice(0, 3).join("; ");
+}
+
+function signalReasonTags(row) {
+  const tags = [];
+  if (row.pressure_delta !== null && n(row.pressure_delta) >= 8) tags.push({ text: "pressure jump", tone: "bad" });
+  if (row.rank_move !== null && n(row.rank_move) >= 5) tags.push({ text: "rank jump", tone: "bad" });
+  if (row.cut_rate_delta !== null && n(row.cut_rate_delta) >= 0.02) tags.push({ text: "cut-rate spike", tone: "warn" });
+  if (row.stale_delta !== null && n(row.stale_delta) >= 0.03) tags.push({ text: "aging spike", tone: "warn" });
+  if (row.duplicate_delta !== null && n(row.duplicate_delta) >= 3) tags.push({ text: "duplicate risk", tone: "warn" });
+  if (n(row.pressure_percentile) >= 0.9) tags.push({ text: "top pressure", tone: "bad" });
+  if (row.confidence === "Low") tags.push({ text: "low base", tone: "low" });
+  if (!tags.length && row.pressure_delta !== null && n(row.pressure_delta) < 0) tags.push({ text: "easing", tone: "good" });
+  if (!tags.length) tags.push({ text: "watch", tone: "neutral" });
+  return tags.slice(0, 4);
+}
+
+function isUnknownDistrict(row) {
+  const text = String(row.district_text || "").trim().toLowerCase();
+  return !text || text === "unknown district" || text.includes("unknown");
+}
+
+function hasStaleSignal(rows) {
+  return rows.some((row) => n(row.stale_60d_share) > 0 || n(row.stale_delta) !== 0);
+}
+
+function rateSeries(rows) {
+  const series = [
+    { label: "Price-cut rate %", data: rows.map((_, idx) => idx === 0 ? null : n(rows[idx].price_cut_rate) * 100) },
+  ];
+  if (hasStaleSignal(rows)) {
+    series.push({ label: "Stale 60d %", data: rows.map((r) => n(r.stale_60d_share) * 100) });
+  }
+  return series;
 }
 
 function projectVsDistrict(row) {
@@ -337,40 +391,49 @@ function marketCurrentAndPrev() {
 function renderPulse() {
   const { current, prev, rows: marketRows } = marketCurrentAndPrev();
   const districts = currentDistricts();
-  const risingDistricts = districts.filter((r) => n(r.pressure_delta) >= 5).length;
-  const highPressureDistricts = districts.filter((r) => n(r.pressure_percentile) >= 0.9).length;
+  const signalDistricts = districts.filter((r) => !isUnknownDistrict(r));
+  const unmappedListings = districts.filter(isUnknownDistrict).reduce((sum, row) => sum + n(row.active_listings), 0);
+  const risingDistricts = signalDistricts.filter((r) => n(r.pressure_delta) >= 5).length;
+  const highPressureDistricts = signalDistricts.filter((r) => n(r.pressure_percentile) >= 0.9).length;
   const activeDelta = prev ? n(current.active_listings) - n(prev.active_listings) : null;
   const cutRateDelta = prev ? n(current.price_cut_rate) - n(prev.price_cut_rate) : null;
   const staleDelta = prev ? n(current.stale_60d_share) - n(prev.stale_60d_share) : null;
+  const staleActive = hasStaleSignal(marketRows);
 
   document.getElementById("metricCards").innerHTML = [
     metric("Active inventory", fmt.format(n(current.active_listings)), activeDelta === null ? "first observed week" : `${fmtSigned(activeDelta)} WoW`),
     metric("Price-cut rate", fmtPct(current.price_cut_rate), cutRateDelta === null ? "first observed week" : `${fmtPp(cutRateDelta)} WoW`),
-    metric("Stale 60d share", fmtPct(current.stale_60d_share), staleDelta === null ? "first observed week" : `${fmtPp(staleDelta)} WoW`),
+    staleActive
+      ? metric("Stale 60d share", fmtPct(current.stale_60d_share), staleDelta === null ? "first observed week" : `${fmtPp(staleDelta)} WoW`)
+      : metric("Listing-age signal", "Not active", "stale-60d is all zero in current extracts"),
     metric("Rising districts", fmtNum(risingDistricts), "pressure +5 score or more"),
     metric("High-pressure districts", fmtNum(highPressureDistricts), "top-decile district pressure"),
   ].join("");
 
-  const topDeterioration = [...districts].filter((r) => r.pressure_delta !== null).sort((a, b) => n(b.pressure_delta) - n(a.pressure_delta)).slice(0, 5);
-  const topPressure = districts.slice(0, 10);
-  const easing = [...districts].filter((r) => r.pressure_delta !== null).sort((a, b) => n(a.pressure_delta) - n(b.pressure_delta)).slice(0, 5);
+  const topDeterioration = [...signalDistricts].filter((r) => r.pressure_delta !== null).sort((a, b) => n(b.pressure_delta) - n(a.pressure_delta)).slice(0, 5);
+  const topPressure = signalDistricts.slice(0, 10);
+  const easing = [...signalDistricts].filter((r) => r.pressure_delta !== null).sort((a, b) => n(a.pressure_delta) - n(b.pressure_delta)).slice(0, 5);
+
+  const pressureDirection = activeDelta === null ? "has no prior comparator yet" : n(cutRateDelta) <= 0 && n(activeDelta) <= 0 ? "eased overall" : n(cutRateDelta) > 0 || n(activeDelta) > 0 ? "shows some renewed pressure" : "was broadly stable";
+  const moverText = topDeterioration.length
+    ? `Watch ${topDeterioration.slice(0, 2).map((r) => escapeHtml(r.district_text)).join(" and ")} for the sharpest district deterioration.`
+    : "No mapped district shows material deterioration.";
+  const staleText = staleActive ? "" : " The stale-60d extract is currently all zero, so aging should not drive interpretation this week.";
+  const unmappedText = unmappedListings ? ` ${fmtNum(unmappedListings)} active listings are unmapped/unknown district and are excluded from ranked district signals.` : "";
 
   document.getElementById("pulseNarrative").innerHTML = `
     <div class="callout">
       <strong>Monitoring read:</strong>
-      ${prev ? `For ${escapeHtml(selectedWeek)}, active inventory moved ${fmtSigned(activeDelta)}, price-cut rate moved ${fmtPp(cutRateDelta)}, and stale-share moved ${fmtPp(staleDelta)} versus the prior snapshot.` : "This is the first snapshot for the selected segment, so movement signals are not yet available."}
-      This tab is district-level only: deterioration is rising pressure, current pressure is the highest composite stress score, and easing is falling pressure.
+      ${prev ? `For ${escapeHtml(selectedWeek)}, listing pressure ${pressureDirection}: active inventory moved ${fmtSigned(activeDelta)} and price-cut rate moved ${fmtPp(cutRateDelta)} versus the prior snapshot.` : "This is the first snapshot for the selected segment, so movement signals are not yet available."}
+      ${moverText}${staleText}${unmappedText}
     </div>`;
 
   table("pulseDeteriorationTable", topDeterioration, monitorColumns("district"), { compact: true });
   table("pulsePressureTable", topPressure, monitorColumns("district"), { compact: true });
   table("pulseEasingTable", easing, monitorColumns("district"), { compact: true });
 
-  const labels = marketRows.map((r) => r.snapshot_week_id);
-  lineChart("pulseRatesChart", labels, [
-    { label: "Price-cut rate %", data: marketRows.map((_, idx) => idx === 0 ? null : n(marketRows[idx].price_cut_rate) * 100) },
-    { label: "Stale 60d %", data: marketRows.map((r) => n(r.stale_60d_share) * 100) },
-  ], { beginAtZero: true });
+  const labels = chartLabels(marketRows);
+  lineChart("pulseRatesChart", labels, rateSeries(marketRows), { beginAtZero: true });
 
   barChart("pulseDistrictChart", topDeterioration.map((r) => r.district_text), [
     { label: "Pressure-score WoW change", data: topDeterioration.map((r) => n(r.pressure_delta)) },
@@ -391,7 +454,7 @@ function monitorColumns(level) {
     { key: "price_cut_rate", label: "Cut %", num: true, format: fmtPct },
     { key: "stale_60d_share", label: "Stale %", num: true, format: fmtPct },
     { key: "confidence", label: "Confidence", format: (v) => confidenceBadge(v) },
-    { key: "reason", label: "Why flagged", format: (_, r) => escapeHtml(signalReasons(r)) },
+    { key: "reason", label: "Why flagged", format: (_, r) => tagList(signalReasonTags(r)) },
   );
   return cols;
 }
@@ -435,7 +498,7 @@ function renderMetrics() {
 function renderOverview() {
   const marketRows = currentMarketRows();
   const regionRows = currentRegions();
-  const labels = marketRows.map((r) => r.snapshot_week_id);
+  const labels = chartLabels(marketRows);
   const regionTrend = regionTrendContext();
   lineChart("activeInventoryChart", labels, [
     { label: "Active listings", data: marketRows.map((r) => n(r.active_listings)) },
@@ -445,21 +508,18 @@ function renderOverview() {
     { label: "Disappeared", data: marketRows.map((_, idx) => movementValue(marketRows, idx, "disappeared_listings")) },
     { label: "Price cuts", data: marketRows.map((_, idx) => movementValue(marketRows, idx, "price_cut_listings")) },
   ], { beginAtZero: true });
-  lineChart("ratesChart", labels, [
-    { label: "Price-cut rate %", data: marketRows.map((_, idx) => idx === 0 ? null : n(marketRows[idx].price_cut_rate) * 100) },
-    { label: "Stale 60d %", data: marketRows.map((r) => n(r.stale_60d_share) * 100) },
-  ], { beginAtZero: true });
+  lineChart("ratesChart", labels, rateSeries(marketRows), { beginAtZero: true });
   lineChart("pricingChart", labels, [
     { label: "Avg PSF", data: marketRows.map((r) => n(r.avg_psf)) },
   ]);
 
-  lineChart("regionActiveInventoryChart", regionTrend.labels, regionTrendSeries(regionTrend, "active_listings"));
-  lineChart("regionPricingChart", regionTrend.labels, regionTrendSeries(regionTrend, "avg_psf"));
-  lineChart("regionCutRateChart", regionTrend.labels.slice(1), regionTrendSeries(regionTrend, "price_cut_rate", (value) => n(value) * 100).map((series) => ({
+  lineChart("regionActiveInventoryChart", chartLabels(regionTrend.labels), regionTrendSeries(regionTrend, "active_listings"));
+  lineChart("regionPricingChart", chartLabels(regionTrend.labels), regionTrendSeries(regionTrend, "avg_psf"));
+  lineChart("regionCutRateChart", chartLabels(regionTrend.labels.slice(1)), regionTrendSeries(regionTrend, "price_cut_rate", (value) => n(value) * 100).map((series) => ({
     ...series,
     data: series.data.slice(1),
   })), { beginAtZero: true });
-  lineChart("regionStaleRateChart", regionTrend.labels, regionTrendSeries(regionTrend, "stale_60d_share", (value) => n(value) * 100), { beginAtZero: true });
+  lineChart("regionStaleRateChart", chartLabels(regionTrend.labels), regionTrendSeries(regionTrend, "stale_60d_share", (value) => n(value) * 100), { beginAtZero: true });
 
   table("regionTable", regionRows, [
     { key: "region_text", label: "Region" },
@@ -476,7 +536,7 @@ function renderOverview() {
     { key: "reason", label: "Read", format: (_, r) => escapeHtml(signalReasons(r)) },
   ]);
 
-  table("districtTable", currentDistricts(), [
+  table("districtTable", currentDistricts().filter((r) => !isUnknownDistrict(r)), [
     { key: "district_text", label: "District" },
     { key: "region_text", label: "Region" },
     { key: "pressure_score", label: "Score", num: true, format: (v) => fmtNum(v, 1) },
@@ -572,16 +632,19 @@ function renderProjectDetail() {
     .filter((r) => r.project_uid === projectUid && r.listing_type === selectedType && r.property_segment === selectedSegment);
   if (!trend.length) return;
   const latest = trend[trend.length - 1];
+  const staleActive = hasStaleSignal(trend);
   document.getElementById("projectCards").innerHTML = [
     metric("Pressure", fmtNum(latest.pressure_score, 1), latest.pressure_delta === null ? "first observed" : `${fmtSigned(latest.pressure_delta, 1)} WoW`),
     metric("Rank", latest.pressure_rank ? `#${fmtNum(latest.pressure_rank)}` : "—", latest.rank_move ? `${fmtSigned(latest.rank_move)} places` : ""),
     metric("Confidence", confidenceBadge(latest.confidence), `${fmtNum(latest.active_listings)} active listings`),
     metric("Vs district", projectVsDistrict(latest), "pressure-score gap"),
-    metric("Stale 60d", fmtPct(latest.stale_60d_share), latest.stale_delta === null ? "" : `${fmtPp(latest.stale_delta)} WoW`),
+    staleActive
+      ? metric("Stale 60d", fmtPct(latest.stale_60d_share), latest.stale_delta === null ? "" : `${fmtPp(latest.stale_delta)} WoW`)
+      : metric("Listing-age signal", "Not active", "stale-60d all zero"),
   ].join("");
   document.getElementById("projectRead").innerHTML = `<div class="callout"><strong>Read:</strong> ${escapeHtml(signalReasons(latest))}. Confidence is ${escapeHtml(latest.confidence.toLowerCase())}; use low-confidence rows as leads, not conclusions.</div>`;
 
-  const labels = trend.map((r) => r.snapshot_week_id);
+  const labels = chartLabels(trend);
   lineChart("projectActiveChart", labels, [
     { label: "Active listings", data: trend.map((r) => n(r.active_listings)) },
   ]);
@@ -593,10 +656,7 @@ function renderProjectDetail() {
   lineChart("projectPressureChart", labels, [
     { label: "Pressure", data: trend.map((r) => n(r.pressure_score)) },
   ]);
-  lineChart("projectRatesChart", labels, [
-    { label: "Price-cut rate %", data: trend.map((r) => n(r.price_cut_rate) * 100) },
-    { label: "Stale 60d %", data: trend.map((r) => n(r.stale_60d_share) * 100) },
-  ], { beginAtZero: true });
+  lineChart("projectRatesChart", labels, rateSeries(trend), { beginAtZero: true });
   lineChart("projectPricingChart", labels, [
     { label: "Avg PSF", data: trend.map((r) => n(r.avg_psf)) },
   ]);
