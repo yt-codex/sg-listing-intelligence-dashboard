@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "status": "OK",
-  "last_run_time": "2026-05-29T18:44:31Z",
+  "last_run_time": "2026-05-30T17:33:17Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-05-23",
-    "lag_seconds": 585871.583997,
+    "lag_seconds": 667997.884048,
     "stale": false
   },
   "row_counts": {
@@ -29,7 +29,7 @@
       "name": "snapshot freshness",
       "status": "OK",
       "detail": "latest snapshot date is 2026-05-23",
-      "metric": 6.78
+      "metric": 7.73
     },
     {
       "name": "market rows",
