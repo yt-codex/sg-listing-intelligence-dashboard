@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "status": "OK",
-  "last_run_time": "2026-05-31T02:20:50Z",
+  "last_run_time": "2026-05-31T03:29:27Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-05-30",
-    "lag_seconds": 94850.239011,
+    "lag_seconds": 98967.402244,
     "stale": false
   },
   "row_counts": {
@@ -18,7 +18,7 @@
     "duplicates": 2641,
     "agents": 3236
   },
-  "schema_hash": "ed02ae21c2e72d85adfe7139adc031c25ac530206e09823179e52d1086b982b3",
+  "schema_hash": "12053edee2a2301e0ca384dece91f1d2305e0596716af749f7f395c3a72026d6",
   "key_checks": [
     {
       "name": "latest week manifest",
@@ -29,7 +29,7 @@
       "name": "snapshot freshness",
       "status": "OK",
       "detail": "latest snapshot date is 2026-05-30",
-      "metric": 1.1
+      "metric": 1.15
     },
     {
       "name": "market rows",
