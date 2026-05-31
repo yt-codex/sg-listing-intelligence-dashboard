@@ -362,6 +362,33 @@ function currentProjects() {
     .sort((a, b) => n(b.pressure_score) - n(a.pressure_score));
 }
 
+function projectDescriptorMap() {
+  const descriptors = new Map();
+  const keyFor = (row) => [row.project_uid, row.listing_type, row.property_segment].join("|");
+  selectedRows(data.projects || []).forEach((row) => {
+    const key = keyFor(row);
+    if (!descriptors.has(key) || row.snapshot_week_id === selectedWeek) {
+      descriptors.set(key, {
+        project_name: row.project_name,
+        project_group_type: row.project_group_type,
+        district_code: row.district_code,
+        district_text: row.district_text,
+        region_text: row.region_text,
+        postal_code: row.postal_code,
+      });
+    }
+  });
+  return descriptors;
+}
+
+function hydratedProjectTrends() {
+  const descriptors = projectDescriptorMap();
+  return (data.projectTrends || []).map((row) => ({
+    ...descriptors.get([row.project_uid, row.listing_type, row.property_segment].join("|")),
+    ...row,
+  }));
+}
+
 function currentMarketRows() {
   return selectedRows(data.market).sort((a, b) => data.weeks.findIndex((w) => w.snapshot_week_id === a.snapshot_week_id) - data.weeks.findIndex((w) => w.snapshot_week_id === b.snapshot_week_id));
 }
@@ -759,7 +786,7 @@ function setupProjectSelect() {
 
 function renderProjectDetail() {
   const projectUid = selectedProjectUid;
-  const trend = enrichRows(data.projectTrends, (r) => r.project_uid, "project")
+  const trend = enrichRows(hydratedProjectTrends(), (r) => r.project_uid, "project")
     .filter((r) => r.project_uid === projectUid && r.listing_type === selectedType && r.property_segment === selectedSegment);
   if (!trend.length) return;
   const latest = trend[trend.length - 1];
