@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
-  "status": "OK",
-  "last_run_time": "2026-06-08T18:38:45Z",
+  "status": "WARN",
+  "last_run_time": "2026-06-09T18:25:23Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-05-30",
-    "lag_seconds": 844725.474475,
-    "stale": false
+    "lag_seconds": 930323.653964,
+    "stale": true
   },
   "row_counts": {
     "market": 54,
@@ -27,9 +27,9 @@
     },
     {
       "name": "snapshot freshness",
-      "status": "OK",
+      "status": "WARN",
       "detail": "latest snapshot date is 2026-05-30",
-      "metric": 9.78
+      "metric": 10.77
     },
     {
       "name": "market rows",
@@ -61,7 +61,9 @@
       "detail": "index.html and app.js are present"
     }
   ],
-  "warnings": [],
+  "warnings": [
+    "latest dashboard snapshot is 10.8 days old"
+  ],
   "artifact_links": [
     {
       "label": "dashboard",
