@@ -47,6 +47,34 @@ function chartLabels(rowsOrWeekIds) {
   return rowsOrWeekIds.map((row) => weekLabel(typeof row === "string" ? row : row.snapshot_week_id));
 }
 
+function parseSnapshotDate(value) {
+  if (!value) return null;
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function earliestSnapshotDate() {
+  const dates = (data?.weeks || []).map((week) => parseSnapshotDate(week.snapshot_date)).filter(Boolean);
+  if (!dates.length) return null;
+  return new Date(Math.min(...dates.map((date) => date.getTime())));
+}
+
+function isStale60dMature(rowOrWeekId) {
+  const firstDate = earliestSnapshotDate();
+  if (!firstDate) return true;
+  const week = typeof rowOrWeekId === "string"
+    ? data?.weeks?.find((item) => item.snapshot_week_id === rowOrWeekId)
+    : rowOrWeekId;
+  const snapshotDate = parseSnapshotDate(week?.snapshot_date);
+  if (!snapshotDate) return true;
+  const daysSinceFirstSnapshot = (snapshotDate - firstDate) / (1000 * 60 * 60 * 24);
+  return daysSinceFirstSnapshot >= 60;
+}
+
+function stale60dChartValue(row, multiplier = 1) {
+  return isStale60dMature(row) ? n(row?.stale_60d_share) * multiplier : null;
+}
+
 function metric(label, value, note = "") {
   return `<article class="metric"><div class="label">${label}</div><div class="value">${value}</div>${note ? `<div class="note">${note}</div>` : ""}</article>`;
 }
@@ -323,7 +351,7 @@ function isUnknownDistrict(row) {
 }
 
 function hasStaleSignal(rows) {
-  return rows.some((row) => n(row.stale_60d_share) > 0 || n(row.stale_delta) !== 0);
+  return rows.some((row) => isStale60dMature(row) && (n(row.stale_60d_share) > 0 || n(row.stale_delta) !== 0));
 }
 
 function rateSeries(rows) {
@@ -331,7 +359,7 @@ function rateSeries(rows) {
     { label: "Price-cut rate %", data: rows.map((_, idx) => idx === 0 ? null : n(rows[idx].price_cut_rate) * 100) },
   ];
   if (hasStaleSignal(rows)) {
-    series.push({ label: "Stale 60d %", data: rows.map((r) => n(r.stale_60d_share) * 100) });
+    series.push({ label: "Stale 60d %", data: rows.map((r) => stale60dChartValue(r, 100)) });
   }
   return series;
 }
@@ -670,7 +698,7 @@ function renderOverview() {
     ...series,
     data: series.data.slice(1),
   })), { beginAtZero: true });
-  lineChart("regionStaleRateChart", chartLabels(regionTrend.labels), regionTrendSeries(regionTrend, "stale_60d_share", (value) => n(value) * 100), { beginAtZero: true });
+  lineChart("regionStaleRateChart", chartLabels(regionTrend.labels), regionTrendSeries(regionTrend, "stale_60d_share", (value, row) => stale60dChartValue(row, 100)), { beginAtZero: true });
 
   table("regionTable", regionRows, [
     { key: "region_text", label: "Region" },
