@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "status": "OK",
-  "last_run_time": "2026-06-28T17:29:35Z",
+  "last_run_time": "2026-06-28T17:34:56Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-06-27",
-    "lag_seconds": 149375.271559,
+    "lag_seconds": 149696.64685,
     "stale": false
   },
   "row_counts": {
@@ -18,7 +18,7 @@
     "duplicates": 3558,
     "agents": 4306
   },
-  "schema_hash": "c34743a74bddf0e6c1ae90e0590a32ca285d963235867fd6222e1cfd3f06e138",
+  "schema_hash": "6ebd618280238621a1569a0520678acade68b9797aee5646bf756bedc9df6ec9",
   "key_checks": [
     {
       "name": "latest week manifest",
