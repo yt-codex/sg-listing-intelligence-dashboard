@@ -679,6 +679,12 @@ function renderOverview() {
   const regionRows = currentRegions();
   const labels = chartLabels(marketRows);
   const regionTrend = regionTrendContext();
+  const latestDate = data.weeks.find((w) => w.snapshot_week_id === data.latestWeek)?.snapshot_date || "—";
+  const builtAt = data.metadata?.built_at_utc ? `${data.metadata.built_at_utc} UTC` : "—";
+  document.getElementById("overviewFreshness").innerHTML = `
+    <h2>Data freshness</h2>
+    <p class="subtle explainer"><strong>Latest dashboard snapshot:</strong> ${escapeHtml(data.latestWeek || "—")} (${escapeHtml(latestDate)}). <strong>Selected snapshot:</strong> ${escapeHtml(selectedWeek || "—")}. <strong>Analytics build:</strong> ${escapeHtml(builtAt)}.</p>
+  `;
   lineChart("activeInventoryChart", labels, [
     { label: "Active listings", data: marketRows.map((r) => n(r.active_listings)) },
   ]);
@@ -921,7 +927,7 @@ function renderAll() {
 
 async function init() {
   setupTabs();
-  const res = await fetch("assets/dashboard-data.json?v=20260503-region-charts-fix", { cache: "no-store" });
+  const res = await fetch("assets/dashboard-data.json?v=20260629-pg-refresh", { cache: "no-store" });
   const geoRes = await fetch("assets/postal-districts-derived.geojson?v=20260517-derived-choropleth", { cache: "no-store" });
   [data, districtPolygons] = await Promise.all([res.json(), geoRes.json()]);
   selectedWeek = data.latestWeek;
