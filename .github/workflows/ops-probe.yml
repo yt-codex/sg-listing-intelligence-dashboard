@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ops-probe
@@ -31,14 +31,9 @@ jobs:
       - name: Emit probe
         run: python scripts/emit_ops_probe.py --output ops/probe.json
 
-      - name: Commit probe
-        run: |
-          if git diff --quiet -- ops/probe.json; then
-            echo "No probe changes."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ops/probe.json
-          git commit -m "chore: refresh ops probe"
-          git push
+      - name: Upload probe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-probe
+          path: ops/probe.json
+          if-no-files-found: error
