@@ -15,9 +15,10 @@ fi
 
 "$PYTHON_BIN" -m sg_listing_intel.etl --source "$SOURCE_DB" --output "$ANALYTICS_DB"
 "$PYTHON_BIN" scripts/export_static_data.py --db "$ANALYTICS_DB" --out docs/assets
+"$PYTHON_BIN" scripts/emit_ops_probe.py --output ops/probe.json
 
 if [[ "${DASHBOARD_AUTO_PUBLISH:-0}" == "1" ]]; then
-  git add docs/assets/dashboard-data.json docs/assets/manifest.json
+  git add docs/assets/dashboard-data.json docs/assets/manifest.json ops/probe.json
   if git diff --cached --quiet; then
     echo "No dashboard static data changes to publish."
   else
