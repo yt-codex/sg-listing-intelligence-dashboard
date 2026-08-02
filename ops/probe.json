@@ -1,22 +1,22 @@
 {
   "schema_version": "1.0",
   "status": "OK",
-  "last_run_time": "2026-08-01T16:22:31Z",
+  "last_run_time": "2026-08-02T03:42:01Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-08-01",
-    "lag_seconds": 58951.479311,
+    "lag_seconds": 99721.722456,
     "stale": false
   },
   "row_counts": {
     "market": 108,
-    "regions": 1079,
-    "districts": 2910,
-    "projects": 32270,
-    "projectTrends": 156746,
-    "priceCuts": 13599,
-    "duplicates": 4104,
-    "agents": 5003
+    "regions": 1080,
+    "districts": 2921,
+    "projects": 32400,
+    "projectTrends": 158477,
+    "priceCuts": 13964,
+    "duplicates": 4201,
+    "agents": 5054
   },
   "schema_hash": "6ebd618280238621a1569a0520678acade68b9797aee5646bf756bedc9df6ec9",
   "key_checks": [
@@ -29,7 +29,7 @@
       "name": "snapshot freshness",
       "status": "OK",
       "detail": "latest snapshot date is 2026-08-01",
-      "metric": 0.68
+      "metric": 1.15
     },
     {
       "name": "market rows",
@@ -40,20 +40,20 @@
     {
       "name": "districts rows",
       "status": "OK",
-      "detail": "2,910 rows exported",
-      "metric": 2910
+      "detail": "2,921 rows exported",
+      "metric": 2921
     },
     {
       "name": "projects rows",
       "status": "OK",
-      "detail": "32,270 rows exported",
-      "metric": 32270
+      "detail": "32,400 rows exported",
+      "metric": 32400
     },
     {
       "name": "projectTrends rows",
       "status": "OK",
-      "detail": "156,746 rows exported",
-      "metric": 156746
+      "detail": "158,477 rows exported",
+      "metric": 158477
     },
     {
       "name": "static app assets",
@@ -76,7 +76,7 @@
     "repo": "yt-codex/sg-listing-intelligence-dashboard",
     "dashboard_url": "https://yt-codex.github.io/sg-listing-intelligence-dashboard/",
     "latest_week": "sg-week-2026-08-01",
-    "built_at_utc": "2026-08-01 16:22:23",
+    "built_at_utc": "2026-08-02 03:41:53",
     "source_path": "../propertyguru-sg-weekly-snapshots-prod-20260403-125756/data/state/propertyguru.sqlite"
   }
 }
