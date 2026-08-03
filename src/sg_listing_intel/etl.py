@@ -688,20 +688,111 @@ INDEX_SQL = [
 def _prepare_source_helpers(con: sqlite3.Connection) -> None:
     con.execute(
         """
-        CREATE TEMP TABLE eligible_source_snapshot_weeks AS
+        CREATE TEMP TABLE standard_source_snapshot_weeks AS
         SELECT DISTINCT snapshot_week_id
         FROM source.search_snapshot
         WHERE snapshot_week_id GLOB 'sg-week-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
         """
     )
-    if con.execute("SELECT COUNT(*) FROM eligible_source_snapshot_weeks").fetchone()[0] == 0:
+    if con.execute("SELECT COUNT(*) FROM standard_source_snapshot_weeks").fetchone()[0] == 0:
         con.execute(
             """
-            INSERT INTO eligible_source_snapshot_weeks
-            SELECT DISTINCT snapshot_week_id
+            CREATE TABLE source_snapshot_week_quality AS
+            SELECT
+                snapshot_week_id,
+                NULL AS listing_type,
+                COUNT(DISTINCT listing_id) AS listing_count,
+                NULL AS trailing_reference_count,
+                1 AS passes_completeness_gate,
+                1 AS week_is_eligible
             FROM source.search_snapshot
+            GROUP BY snapshot_week_id
             """
         )
+    else:
+        con.execute(
+            """
+            CREATE TEMP TABLE source_snapshot_week_type_counts AS
+            SELECT
+                snapshot_week_id,
+                listing_type,
+                COUNT(DISTINCT listing_id) AS listing_count
+            FROM source.search_snapshot
+            WHERE snapshot_week_id IN (SELECT snapshot_week_id FROM standard_source_snapshot_weeks)
+                AND listing_type IN ('SALE', 'RENT')
+            GROUP BY snapshot_week_id, listing_type
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE source_snapshot_week_quality AS
+            WITH listing_types(listing_type) AS (
+                VALUES ('SALE'), ('RENT')
+            ), week_type_grid AS (
+                SELECT
+                    w.snapshot_week_id,
+                    t.listing_type,
+                    COALESCE(c.listing_count, 0) AS listing_count
+                FROM standard_source_snapshot_weeks w
+                CROSS JOIN listing_types t
+                LEFT JOIN source_snapshot_week_type_counts c
+                    ON c.snapshot_week_id = w.snapshot_week_id
+                    AND c.listing_type = t.listing_type
+            ), scored AS (
+                SELECT
+                    g.*,
+                    (
+                        SELECT MAX(prior.listing_count)
+                        FROM (
+                            SELECT p.listing_count
+                            FROM source_snapshot_week_type_counts p
+                            WHERE p.listing_type = g.listing_type
+                                AND p.snapshot_week_id < g.snapshot_week_id
+                            ORDER BY p.snapshot_week_id DESC
+                            LIMIT 8
+                        ) prior
+                    ) AS trailing_reference_count
+                FROM week_type_grid g
+            ), type_quality AS (
+                SELECT
+                    *,
+                    CASE
+                        WHEN trailing_reference_count IS NULL THEN 1
+                        WHEN listing_count >= trailing_reference_count * 0.65 THEN 1
+                        ELSE 0
+                    END AS passes_completeness_gate
+                FROM scored
+            ), week_quality AS (
+                SELECT
+                    snapshot_week_id,
+                    CASE
+                        WHEN COUNT(*) = 2 AND SUM(passes_completeness_gate) = 2 THEN 1
+                        ELSE 0
+                    END AS week_is_eligible
+                FROM type_quality
+                GROUP BY snapshot_week_id
+            )
+            SELECT
+                tq.snapshot_week_id,
+                tq.listing_type,
+                tq.listing_count,
+                tq.trailing_reference_count,
+                tq.passes_completeness_gate,
+                wq.week_is_eligible
+            FROM type_quality tq
+            JOIN week_quality wq
+                ON wq.snapshot_week_id = tq.snapshot_week_id
+            """
+        )
+
+    con.execute(
+        """
+        CREATE TEMP TABLE eligible_source_snapshot_weeks AS
+        SELECT DISTINCT snapshot_week_id
+        FROM source_snapshot_week_quality
+        WHERE week_is_eligible = 1
+        """
+    )
 
     has_detail_project = con.execute(
         """
@@ -770,7 +861,9 @@ def build_analytics_db(source: Path, output: Path) -> None:
             SELECT
                 DATETIME('now') AS built_at_utc,
                 ? AS source_path,
+                (SELECT COUNT(DISTINCT snapshot_week_id) FROM source_snapshot_week_quality) AS source_snapshot_weeks,
                 COUNT(DISTINCT snapshot_week_id) AS snapshot_weeks,
+                (SELECT COUNT(DISTINCT snapshot_week_id) FROM source_snapshot_week_quality WHERE week_is_eligible = 0) AS withheld_snapshot_weeks,
                 COUNT(*) AS listing_week_rows
             FROM listing_week_panel
             """,

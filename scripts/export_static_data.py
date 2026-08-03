@@ -175,6 +175,14 @@ STATIC_EXPORT_COLUMNS = {
         "avg_psf",
         "stale_60d_share",
     },
+    "sourceWeekQuality": {
+        "snapshot_week_id",
+        "listing_type",
+        "listing_count",
+        "trailing_reference_count",
+        "passes_completeness_gate",
+        "week_is_eligible",
+    },
 }
 
 
@@ -305,6 +313,14 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
             ORDER BY snapshot_week_id, rn
             """,
         )
+        source_week_quality = rows(
+            con,
+            """
+            SELECT *
+            FROM source_snapshot_week_quality
+            ORDER BY snapshot_week_id, listing_type
+            """,
+        )
 
     payload = {
         "metadata": metadata[0] if metadata else {},
@@ -318,6 +334,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
         "priceCuts": trim_rows("priceCuts", price_cuts),
         "duplicates": trim_rows("duplicates", duplicates),
         "agents": trim_rows("agents", agents),
+        "sourceWeekQuality": trim_rows("sourceWeekQuality", source_week_quality),
     }
     write_json(out_dir / "dashboard-data.json", payload)
     write_json(
