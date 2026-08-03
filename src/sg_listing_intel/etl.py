@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+from datetime import date
 from pathlib import Path
 
 
@@ -82,6 +83,9 @@ WITH eligible_snapshot_weeks AS (
         s.agent_license,
         li.first_seen_at,
         li.last_seen_at,
+        0 AS is_imputed,
+        NULL AS imputation_source_prior_week,
+        NULL AS imputation_source_next_week,
         CAST(
             JULIANDAY(COALESCE(s.snapshot_date, s.scraped_at))
             - JULIANDAY(COALESCE(li.first_seen_at, s.scraped_at))
@@ -144,6 +148,25 @@ WITH eligible_snapshot_weeks AS (
     FROM base
 )
 SELECT * FROM panel;
+"""
+
+IMPUTATION_SUMMARY_SQL = """
+CREATE TABLE source_snapshot_week_imputation AS
+SELECT
+    q.snapshot_week_id,
+    q.listing_type,
+    q.listing_count AS observed_listing_count,
+    COUNT(p.listing_id) AS imputed_listing_count,
+    q.listing_count + COUNT(p.listing_id) AS repaired_listing_count,
+    q.trailing_reference_count,
+    q.passes_completeness_gate,
+    q.week_is_eligible
+FROM source_snapshot_week_quality q
+LEFT JOIN listing_week_panel p
+    ON p.snapshot_week_id = q.snapshot_week_id
+    AND p.listing_type = q.listing_type
+    AND p.is_imputed = 1
+GROUP BY q.snapshot_week_id, q.listing_type;
 """
 
 WEEK_SQL = """
@@ -603,6 +626,8 @@ SELECT
     p.listing_type,
     p.property_segment,
     COUNT(*) AS active_listings,
+    SUM(CASE WHEN p.is_imputed = 0 THEN 1 ELSE 0 END) AS observed_active_listings,
+    SUM(CASE WHEN p.is_imputed = 1 THEN 1 ELSE 0 END) AS imputed_active_listings,
     SUM(p.is_new_this_week) AS new_listings,
     COALESCE(d.disappeared_listings, 0) AS disappeared_listings,
     SUM(p.is_clean_price_cut) AS price_cut_listings,
@@ -790,7 +815,6 @@ def _prepare_source_helpers(con: sqlite3.Connection) -> None:
         CREATE TEMP TABLE eligible_source_snapshot_weeks AS
         SELECT DISTINCT snapshot_week_id
         FROM source_snapshot_week_quality
-        WHERE week_is_eligible = 1
         """
     )
 
@@ -828,6 +852,105 @@ def _prepare_source_helpers(con: sqlite3.Connection) -> None:
         )
 
 
+
+def _impute_bridged_listing_weeks(con: sqlite3.Connection) -> None:
+    con.row_factory = sqlite3.Row
+    bad_weeks = [
+        dict(row)
+        for row in con.execute(
+            """
+            SELECT
+                q.snapshot_week_id,
+                MIN(s.snapshot_date) AS snapshot_date
+            FROM source_snapshot_week_quality q
+            JOIN source.search_snapshot s
+                ON s.snapshot_week_id = q.snapshot_week_id
+            WHERE q.week_is_eligible = 0
+            GROUP BY q.snapshot_week_id
+            ORDER BY q.snapshot_week_id
+            """
+        ).fetchall()
+    ]
+    if not bad_weeks:
+        return
+
+    con.execute("CREATE INDEX idx_panel_impute_listing_week ON listing_week_panel(listing_id, listing_type, snapshot_week_id)")
+    con.execute("CREATE INDEX idx_panel_impute_week_listing ON listing_week_panel(snapshot_week_id, listing_id, listing_type)")
+
+    columns = [row[1] for row in con.execute("PRAGMA table_info(listing_week_panel)").fetchall()]
+    placeholders = ", ".join("?" for _ in columns)
+    insert_sql = f"INSERT INTO listing_week_panel ({', '.join(columns)}) VALUES ({placeholders})"
+    select_sql = f"""
+        SELECT {', '.join(columns)}
+        FROM listing_week_panel
+        ORDER BY listing_id, listing_type, snapshot_week_id
+    """
+
+    rows_iter = con.execute(select_sql)
+    batch: list[tuple[object, ...]] = []
+    current_group: list[sqlite3.Row] = []
+    current_key: tuple[object, object] | None = None
+
+    def flush() -> None:
+        if batch:
+            con.executemany(insert_sql, batch)
+            batch.clear()
+
+    def add_repaired_row(source: sqlite3.Row, bad_week: dict[str, object], next_week: str | None) -> None:
+        prior_week = str(source["snapshot_week_id"])
+        bad_week_id = str(bad_week["snapshot_week_id"])
+        target_date = bad_week["snapshot_date"]
+        repaired = dict(source)
+        repaired.update(
+            {
+                "snapshot_week_id": bad_week_id,
+                "snapshot_date": target_date,
+                "is_imputed": 1,
+                "imputation_source_prior_week": prior_week,
+                "imputation_source_next_week": next_week,
+                "prior_price_value": source["price_value"],
+                "prior_price_per_area_value": source["price_per_area_value"],
+                "price_change_abs": 0,
+                "price_change_pct": 0,
+                "is_price_cut": 0,
+                "is_clean_price_cut": 0,
+                "is_new_this_week": 0,
+            }
+        )
+        first_seen_at = str(repaired.get("first_seen_at") or target_date)[:10]
+        age_days = (date.fromisoformat(str(target_date)[:10]) - date.fromisoformat(first_seen_at)).days
+        repaired["age_days"] = age_days
+        repaired["is_stale_60d"] = 1 if age_days >= 60 else 0
+        repaired["is_stale_90d"] = 1 if age_days >= 90 else 0
+        batch.append(tuple(repaired[column] for column in columns))
+        if len(batch) >= 10_000:
+            flush()
+
+    def process_group(group: list[sqlite3.Row]) -> None:
+        if not group:
+            return
+        observed_weeks = {str(row["snapshot_week_id"]) for row in group}
+        for previous, current in zip(group, group[1:]):
+            prior_week = str(previous["snapshot_week_id"])
+            next_week = str(current["snapshot_week_id"])
+            for bad_week in bad_weeks:
+                bad_week_id = str(bad_week["snapshot_week_id"])
+                if bad_week_id not in observed_weeks and prior_week < bad_week_id < next_week:
+                    add_repaired_row(previous, bad_week, next_week)
+
+
+    for row in rows_iter:
+        row_key = (row["listing_id"], row["listing_type"])
+        if current_key is not None and row_key != current_key:
+            process_group(current_group)
+            current_group = []
+        current_key = row_key
+        current_group.append(row)
+
+    process_group(current_group)
+    flush()
+
+
 def build_analytics_db(source: Path, output: Path) -> None:
     if not source.exists():
         raise FileNotFoundError(f"Source database not found: {source}")
@@ -843,6 +966,8 @@ def build_analytics_db(source: Path, output: Path) -> None:
         _prepare_source_helpers(con)
 
         con.executescript(PANEL_SQL)
+        _impute_bridged_listing_weeks(con)
+        con.executescript(IMPUTATION_SUMMARY_SQL)
         con.executescript(WEEK_SQL)
         con.executescript(DISAPPEARED_SQL)
         con.executescript(DUPLICATE_SQL)
@@ -864,6 +989,7 @@ def build_analytics_db(source: Path, output: Path) -> None:
                 (SELECT COUNT(DISTINCT snapshot_week_id) FROM source_snapshot_week_quality) AS source_snapshot_weeks,
                 COUNT(DISTINCT snapshot_week_id) AS snapshot_weeks,
                 (SELECT COUNT(DISTINCT snapshot_week_id) FROM source_snapshot_week_quality WHERE week_is_eligible = 0) AS withheld_snapshot_weeks,
+                (SELECT COUNT(*) FROM listing_week_panel WHERE is_imputed = 1) AS imputed_listing_week_rows,
                 COUNT(*) AS listing_week_rows
             FROM listing_week_panel
             """,

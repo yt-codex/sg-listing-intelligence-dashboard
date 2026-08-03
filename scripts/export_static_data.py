@@ -25,6 +25,8 @@ STATIC_EXPORT_COLUMNS = {
         "listing_type",
         "property_segment",
         "active_listings",
+        "observed_active_listings",
+        "imputed_active_listings",
         "new_listings",
         "disappeared_listings",
         "price_cut_listings",
@@ -178,7 +180,9 @@ STATIC_EXPORT_COLUMNS = {
     "sourceWeekQuality": {
         "snapshot_week_id",
         "listing_type",
-        "listing_count",
+        "observed_listing_count",
+        "imputed_listing_count",
+        "repaired_listing_count",
         "trailing_reference_count",
         "passes_completeness_gate",
         "week_is_eligible",
@@ -317,7 +321,7 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) ->
             con,
             """
             SELECT *
-            FROM source_snapshot_week_quality
+            FROM source_snapshot_week_imputation
             ORDER BY snapshot_week_id, listing_type
             """,
         )
