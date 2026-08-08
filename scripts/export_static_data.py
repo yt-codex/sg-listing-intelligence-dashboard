@@ -195,7 +195,7 @@ def trim_rows(section: str, data_rows: list[dict[str, Any]]) -> list[dict[str, A
     return [{key: row[key] for key in row.keys() if key in keep} for row in data_rows]
 
 
-def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 300) -> None:
+def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 250) -> None:
     if not db_path.exists():
         raise FileNotFoundError(f"Analytics DB not found: {db_path}")
 
@@ -363,7 +363,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Export aggregate dashboard JSON for GitHub Pages")
     parser.add_argument("--db", type=Path, default=Path("data/analytics/listing_intel.sqlite"))
     parser.add_argument("--out", type=Path, default=Path("docs/assets"))
-    parser.add_argument("--top-projects", type=int, default=300)
+    parser.add_argument("--top-projects", type=int, default=250)
     return parser.parse_args()
 
 
