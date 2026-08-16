@@ -1,22 +1,22 @@
 {
   "schema_version": "1.0",
   "status": "OK",
-  "last_run_time": "2026-08-15T17:06:51Z",
+  "last_run_time": "2026-08-16T19:02:10Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-08-15",
-    "lag_seconds": 61611.314886,
+    "lag_seconds": 154930.364346,
     "stale": false
   },
   "row_counts": {
     "market": 120,
     "regions": 1200,
-    "districts": 3263,
+    "districts": 3267,
     "projects": 30000,
-    "projectTrends": 168677,
-    "priceCuts": 15567,
-    "duplicates": 5096,
-    "agents": 6067
+    "projectTrends": 169754,
+    "priceCuts": 15700,
+    "duplicates": 5204,
+    "agents": 6266
   },
   "schema_hash": "6ebd618280238621a1569a0520678acade68b9797aee5646bf756bedc9df6ec9",
   "key_checks": [
@@ -29,7 +29,7 @@
       "name": "snapshot freshness",
       "status": "OK",
       "detail": "latest snapshot date is 2026-08-15",
-      "metric": 0.71
+      "metric": 1.79
     },
     {
       "name": "market rows",
@@ -40,8 +40,8 @@
     {
       "name": "districts rows",
       "status": "OK",
-      "detail": "3,263 rows exported",
-      "metric": 3263
+      "detail": "3,267 rows exported",
+      "metric": 3267
     },
     {
       "name": "projects rows",
@@ -52,8 +52,8 @@
     {
       "name": "projectTrends rows",
       "status": "OK",
-      "detail": "168,677 rows exported",
-      "metric": 168677
+      "detail": "169,754 rows exported",
+      "metric": 169754
     },
     {
       "name": "static app assets",
@@ -76,7 +76,7 @@
     "repo": "yt-codex/sg-listing-intelligence-dashboard",
     "dashboard_url": "https://yt-codex.github.io/sg-listing-intelligence-dashboard/",
     "latest_week": "sg-week-2026-08-15",
-    "built_at_utc": "2026-08-15 17:06:41",
+    "built_at_utc": "2026-08-16 19:02:00",
     "source_path": "../propertyguru-sg-weekly-snapshots-prod-20260403-125756/data/state/propertyguru.sqlite"
   }
 }
