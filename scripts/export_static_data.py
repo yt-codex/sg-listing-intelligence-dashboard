@@ -195,7 +195,13 @@ def trim_rows(section: str, data_rows: list[dict[str, Any]]) -> list[dict[str, A
     return [{key: row[key] for key in row.keys() if key in keep} for row in data_rows]
 
 
-def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 250) -> None:
+def export_static_data(
+    db_path: Path,
+    out_dir: Path,
+    top_projects: int = 75,
+    event_rows_per_group: int = 75,
+    agent_rows_per_group: int = 100,
+) -> None:
     if not db_path.exists():
         raise FileNotFoundError(f"Analytics DB not found: {db_path}")
 
@@ -274,9 +280,10 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 250) ->
             )
             SELECT *
             FROM ranked
-            WHERE rn <= 150
+            WHERE rn <= ?
             ORDER BY snapshot_week_id, rn
             """,
+            (event_rows_per_group,),
         )
 
         duplicates = rows(
@@ -293,9 +300,10 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 250) ->
             )
             SELECT *
             FROM ranked
-            WHERE rn <= 150
+            WHERE rn <= ?
             ORDER BY snapshot_week_id, rn
             """,
+            (event_rows_per_group,),
         )
 
         agents = rows(
@@ -313,9 +321,10 @@ def export_static_data(db_path: Path, out_dir: Path, top_projects: int = 250) ->
             )
             SELECT *
             FROM ranked
-            WHERE rn <= 200
+            WHERE rn <= ?
             ORDER BY snapshot_week_id, rn
             """,
+            (agent_rows_per_group,),
         )
         source_week_quality = rows(
             con,
@@ -363,13 +372,21 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Export aggregate dashboard JSON for GitHub Pages")
     parser.add_argument("--db", type=Path, default=Path("data/analytics/listing_intel.sqlite"))
     parser.add_argument("--out", type=Path, default=Path("docs/assets"))
-    parser.add_argument("--top-projects", type=int, default=250)
+    parser.add_argument("--top-projects", type=int, default=75)
+    parser.add_argument("--event-rows-per-group", type=int, default=75)
+    parser.add_argument("--agent-rows-per-group", type=int, default=100)
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    export_static_data(args.db, args.out, args.top_projects)
+    export_static_data(
+        args.db,
+        args.out,
+        top_projects=args.top_projects,
+        event_rows_per_group=args.event_rows_per_group,
+        agent_rows_per_group=args.agent_rows_per_group,
+    )
     print(f"Exported static dashboard data to {args.out}")
 
 

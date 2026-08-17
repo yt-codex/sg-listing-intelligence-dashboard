@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from scripts.export_static_data import export_static_data
 from sg_listing_intel.etl import build_analytics_db
 
 
@@ -151,3 +152,24 @@ def test_build_analytics_db(tmp_path: Path) -> None:
     assert region_count == 3
     assert project_count == 3
     assert postal_group == ("Postal 456789", "postal_code", "456789", 2)
+
+
+def test_static_export_respects_project_and_event_caps(tmp_path: Path) -> None:
+    source = tmp_path / "source.sqlite"
+    output = tmp_path / "analytics.sqlite"
+    assets = tmp_path / "assets"
+    make_source_db(source)
+    build_analytics_db(source, output)
+
+    export_static_data(output, assets, top_projects=1, event_rows_per_group=1, agent_rows_per_group=1)
+
+    import json
+
+    payload = json.loads((assets / "dashboard-data.json").read_text())
+    manifest = json.loads((assets / "manifest.json").read_text())
+
+    assert manifest["rowCounts"]["projects"] == 2
+    assert len(payload["projects"]) == 2
+    assert len(payload["priceCuts"]) == 1
+    assert len(payload["duplicates"]) <= 2
+    assert len(payload["agents"]) <= 2

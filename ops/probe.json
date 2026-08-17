@@ -1,22 +1,22 @@
 {
   "schema_version": "1.0",
   "status": "OK",
-  "last_run_time": "2026-08-16T19:02:10Z",
+  "last_run_time": "2026-08-17T00:22:53Z",
   "duration_seconds": null,
   "freshness": {
     "max_date": "2026-08-15",
-    "lag_seconds": 154930.364346,
+    "lag_seconds": 174173.104812,
     "stale": false
   },
   "row_counts": {
     "market": 120,
     "regions": 1200,
     "districts": 3267,
-    "projects": 30000,
-    "projectTrends": 169754,
-    "priceCuts": 15700,
-    "duplicates": 5204,
-    "agents": 6266
+    "projects": 9000,
+    "projectTrends": 73314,
+    "priceCuts": 8445,
+    "duplicates": 2999,
+    "agents": 3659
   },
   "schema_hash": "6ebd618280238621a1569a0520678acade68b9797aee5646bf756bedc9df6ec9",
   "key_checks": [
@@ -29,7 +29,7 @@
       "name": "snapshot freshness",
       "status": "OK",
       "detail": "latest snapshot date is 2026-08-15",
-      "metric": 1.79
+      "metric": 2.02
     },
     {
       "name": "market rows",
@@ -46,14 +46,14 @@
     {
       "name": "projects rows",
       "status": "OK",
-      "detail": "30,000 rows exported",
-      "metric": 30000
+      "detail": "9,000 rows exported",
+      "metric": 9000
     },
     {
       "name": "projectTrends rows",
       "status": "OK",
-      "detail": "169,754 rows exported",
-      "metric": 169754
+      "detail": "73,314 rows exported",
+      "metric": 73314
     },
     {
       "name": "static app assets",
