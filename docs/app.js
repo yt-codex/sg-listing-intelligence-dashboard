@@ -165,6 +165,8 @@ function destroyChart(id) {
   }
 }
 
+const chartPalette = ["#175b65", "#b47a20", "#6c6192", "#3d719d", "#9b5a53", "#517760", "#7b6e55", "#526783", "#a26486", "#6c787c"];
+
 function lineChart(id, labels, series, options = {}) {
   // Categorical charts otherwise join across absent weeks as if nothing was missed.
   const expandedLabels = [];
@@ -189,12 +191,16 @@ function lineChart(id, labels, series, options = {}) {
     type: "line",
     data: {
       labels,
-      datasets: series.map((s) => ({
+      datasets: series.map((s, i) => ({
+        borderColor: chartPalette[i % chartPalette.length],
+        backgroundColor: chartPalette[i % chartPalette.length],
+        borderDash: i === 1 ? [5, 3] : [],
         label: s.label,
         data: s.data,
         borderWidth: 2,
-        tension: 0.25,
+        tension: 0,
         pointRadius: 2,
+        pointHoverRadius: 5,
         spanGaps: false,
       })),
     },
@@ -203,10 +209,10 @@ function lineChart(id, labels, series, options = {}) {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "bottom" } },
+      plugins: { legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "line", padding: 18, color: "#536775", font: { size: 11 } } } },
       scales: {
         x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
-        y: { beginAtZero: options.beginAtZero ?? false },
+        y: { beginAtZero: options.beginAtZero ?? false, grid: { color: "#e8edef" }, border: { display: false }, ticks: { color: "#536775" } },
       },
     },
   });
@@ -219,13 +225,13 @@ function barChart(id, labels, series, options = {}) {
   if (typeof Chart === "undefined") { ctx.outerHTML = `<p class="subtle">Chart library unavailable; numerical tables remain available.</p>`; return; }
   charts[id] = new Chart(ctx, {
     type: "bar",
-    data: { labels, datasets: series.map((s) => ({ label: s.label, data: s.data, borderWidth: 1 })) },
+    data: { labels, datasets: series.map((s, i) => ({ label: s.label, data: s.data, borderWidth: 0, backgroundColor: chartPalette[i % chartPalette.length], borderRadius: 2 })) },
     options: {
       animation: false,
       responsive: true,
       maintainAspectRatio: false,
       indexAxis: options.horizontal ? "y" : "x",
-      plugins: { legend: { position: "bottom" } },
+      plugins: { legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "line", padding: 18, color: "#536775", font: { size: 11 } } } },
       scales: {
         x: { beginAtZero: true, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
         y: { beginAtZero: true },
