@@ -254,3 +254,17 @@ Initial inspection found the local PropertyGuru database has approximately:
 - 113,947 rows in `listing_identity`
 - 58,303 rows in `detail_snapshot`
 - 4 distinct snapshot weeks from `sg-week-2026-04-04` to `sg-week-2026-04-25`
+
+## Executive monitoring / bounded data contract (v2)
+
+See [design and interpretation limits](design/executive-monitoring.md). The static
+app now boots from a bounded 14-snapshot summary; project details, diagnostics,
+archive years and project-year histories are fetched on demand. The exporter
+fails before writing if a payload exceeds its explicit byte budget. The manifest
+reports measured raw and gzip bytes and retained row counts. Full retained history
+stays in time-partitioned archives rather than accumulating in the initial download.
+
+The fixed-reference score is an **unvalidated descriptive screening rule**, not a
+forecast. Calendar gaps and reconstructed data restrict direction claims. Asking
+prices, advert persistence and disappearances must not be interpreted as confirmed
+transaction outcomes, unique dwelling counts or verified continuous time on market.

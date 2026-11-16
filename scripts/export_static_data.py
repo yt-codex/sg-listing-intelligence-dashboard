@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 import sqlite3
 from pathlib import Path
 from typing import Any
+
+from sg_listing_intel.reporting import enrich_payload, write_sharded_payload
 
 
 def rows(con: sqlite3.Connection, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
@@ -239,7 +242,7 @@ def export_static_data(
                         ORDER BY active_listings DESC, pressure_score DESC
                     ) AS rn
                 FROM project_week_metrics
-                WHERE project_uid IS NOT NULL
+                WHERE project_uid IS NOT NULL AND project_group_type IN ('actual_project', 'postal_code') AND COALESCE(postal_code, '') <> '000000'
             )
             SELECT *
             FROM ranked
@@ -335,6 +338,19 @@ def export_static_data(
             """,
         )
 
+    # One UID must identify one reported group per week. Location-conflicted
+    # groups cannot be summed safely (agents and duplicate counts may overlap).
+    def key(row):
+        return (row["snapshot_week_id"], row["listing_type"], row["property_segment"], row["project_uid"])
+    counts = Counter(key(row) for row in project_trends)
+    ambiguous = {group for group, count in counts.items() if count > 1}
+    withheld_candidates = sum(key(row) in ambiguous for row in projects)
+    projects = [row for row in projects if key(row) not in ambiguous]
+    project_trends = [row for row in project_trends if key(row) not in ambiguous]
+    if metadata:
+        metadata[0]["ambiguous_project_history_keys_withheld"] = len(ambiguous)
+        metadata[0]["ambiguous_project_candidate_rows_withheld"] = withheld_candidates
+
     payload = {
         "metadata": metadata[0] if metadata else {},
         "latestWeek": latest_week,
@@ -349,23 +365,8 @@ def export_static_data(
         "agents": trim_rows("agents", agents),
         "sourceWeekQuality": trim_rows("sourceWeekQuality", source_week_quality),
     }
-    write_json(out_dir / "dashboard-data.json", payload)
-    write_json(
-        out_dir / "manifest.json",
-        {
-            "latestWeek": latest_week,
-            "rowCounts": {
-                "market": len(market),
-                "regions": len(regions),
-                "districts": len(districts),
-                "projects": len(projects),
-                "projectTrends": len(project_trends),
-                "priceCuts": len(price_cuts),
-                "duplicates": len(duplicates),
-                "agents": len(agents),
-            },
-        },
-    )
+    enrich_payload(payload, db_path)
+    write_sharded_payload(out_dir, payload)
 
 
 def parse_args() -> argparse.Namespace:

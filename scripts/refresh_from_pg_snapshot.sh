@@ -18,7 +18,7 @@ fi
 "$PYTHON_BIN" scripts/emit_ops_probe.py --output ops/probe.json
 
 if [[ "${DASHBOARD_AUTO_PUBLISH:-0}" == "1" ]]; then
-  git add docs/assets/dashboard-data.json docs/assets/manifest.json ops/probe.json
+  git add docs/assets/dashboard-data.json docs/assets/manifest.json docs/assets/weeks docs/assets/years docs/assets/projects docs/assets/diagnostics ops/probe.json
   if git diff --cached --quiet; then
     echo "No dashboard static data changes to publish."
   else

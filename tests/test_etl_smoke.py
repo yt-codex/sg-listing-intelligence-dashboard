@@ -169,7 +169,84 @@ def test_static_export_respects_project_and_event_caps(tmp_path: Path) -> None:
     manifest = json.loads((assets / "manifest.json").read_text())
 
     assert manifest["rowCounts"]["projects"] == 2
-    assert len(payload["projects"]) == 2
-    assert len(payload["priceCuts"]) == 1
-    assert len(payload["duplicates"]) <= 2
-    assert len(payload["agents"]) <= 2
+    assert payload["projects"] == []  # loaded only when requested
+    detail = json.loads((assets / "weeks/w2.json").read_text())
+    events = json.loads((assets / "diagnostics/w2.json").read_text())
+    assert len(detail["projects"]) == 2
+    assert len(events["priceCuts"]) == 1
+    assert len(events["duplicates"]) <= 2
+    assert len(events["agents"]) <= 2
+    assert payload["market"][-1]["matched_price_count"] == 1
+    assert payload["market"][-1]["matched_price_cut_rate"] == 1
+    assert payload["market"][-1]["median_psf"] > 0
+
+
+def test_invalid_postal_is_not_exported_as_project(tmp_path: Path) -> None:
+    source = tmp_path / "source.sqlite"
+    output = tmp_path / "analytics.sqlite"
+    assets = tmp_path / "assets"
+    make_source_db(source)
+    with sqlite3.connect(source) as con:
+        con.execute("UPDATE listing_identity SET postal_code='000000' WHERE listing_id IN (3,4)")
+    build_analytics_db(source, output)
+    with sqlite3.connect(output) as con:
+        assert con.execute("SELECT COUNT(*) FROM project_week_metrics WHERE project_uid='postal:000000'").fetchone()[0] == 0
+    export_static_data(output, assets)
+    import json
+    projects = json.loads((assets/'weeks/w2.json').read_text())['projects']
+    assert all(r['project_group_type'] == 'actual_project' for r in projects)
+
+
+def test_matched_rate_excludes_gap_returners(tmp_path: Path) -> None:
+    source = tmp_path / "source.sqlite"
+    output = tmp_path / "analytics.sqlite"
+    assets = tmp_path / "assets"
+    make_source_db(source)
+    with sqlite3.connect(source) as con:
+        con.execute("UPDATE search_snapshot SET snapshot_date='2026-04-15', scraped_at='2026-04-15' WHERE snapshot_week_id='w2'")
+    build_analytics_db(source, output)
+    export_static_data(output, assets)
+    import json
+    markets = json.loads((assets/'dashboard-data.json').read_text())['market']
+    assert not markets[-1]['comparison_eligible']
+    assert 'matched_price_cut_rate' not in markets[-1]
+
+
+def test_capture_warning_blocks_comparison_and_exports_only_safe_metadata(tmp_path: Path) -> None:
+    source = tmp_path / "source.sqlite"
+    output = tmp_path / "analytics.sqlite"
+    assets = tmp_path / "assets"
+    make_source_db(source)
+    with sqlite3.connect(source) as con:
+        con.execute('CREATE TABLE crawl_run(snapshot_week_id, started_at, finished_at, status, qa_summary_json)')
+        con.execute('INSERT INTO crawl_run VALUES (?, ?, ?, ?, ?)',
+                    ('w2', '2026-04-08T00:00:00Z', '2026-04-08T01:00:00Z', 'completed',
+                     '{"status":"completed_with_warnings","search":{"search_blocked_count":1},"internal":"not public"}'))
+    build_analytics_db(source, output)
+    export_static_data(output, assets)
+    import json
+    raw = (assets/'dashboard-data.json').read_text()
+    payload = json.loads(raw)
+    latest = payload['market'][-1]
+    assert latest['capture_search_warning'] is True
+    assert latest['comparison_eligible'] is False
+    assert latest['latest_run_status'] == 'completed_with_warnings'
+    assert 'not public' not in raw
+    assert 'source_path' not in payload['metadata']
+
+
+def test_conflicting_project_location_history_is_withheld(tmp_path: Path) -> None:
+    source = tmp_path / "source.sqlite"
+    output = tmp_path / "analytics.sqlite"
+    assets = tmp_path / "assets"
+    make_source_db(source)
+    with sqlite3.connect(source) as con:
+        con.execute("UPDATE listing_identity SET district_code='D15', district_text='East Coast', region_code='RCR', region_text='RCR' WHERE listing_id=2")
+    build_analytics_db(source, output)
+    export_static_data(output, assets)
+    import json
+    payload = json.loads((assets/'dashboard-data.json').read_text())
+    detail = json.loads((assets/'weeks/w2.json').read_text())
+    assert payload['metadata']['ambiguous_project_history_keys_withheld'] == 1
+    assert not any(r['project_uid']=='p1' and r['snapshot_week_id']=='w2' for r in detail['projects'])
+    assert any(r['project_uid']=='p1' and r['snapshot_week_id']=='w1' for r in detail['projects'])

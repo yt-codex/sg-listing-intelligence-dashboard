@@ -202,3 +202,60 @@ td.num .tag-list { justify-content: flex-end; }
   select { width: 100%; }
   th, td { white-space: normal; }
 }
+/* Executive monitoring layer: a compact brief above the analytical detail. */
+h1 { font-size: clamp(25px, 3vw, 36px); }
+header { align-items: center; }
+.header-actions { max-width: 680px; }
+.header-actions select { min-width: 165px; }
+.quality-strip { display: flex; gap: 10px 20px; flex-wrap: wrap; border: 1px solid #e8d8ae; background: #fffaf0; padding: 14px 18px; border-radius: 12px; font-size: 13px; line-height: 1.6; }
+.quality-strip strong { flex-basis: 100%; }
+.brief-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.action-button { border: 1px solid #b9cce8; color: #154988; background: #f4f8ff; border-radius: 8px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+.assessment { font-size: 19px; line-height: 1.55; max-width: 1100px; margin-bottom: 12px; }
+.summary-number { font-size: 36px; font-weight: 800; letter-spacing: -0.04em; }
+.market-summary dl { margin: 0; }
+.market-summary dl > div { display: flex; justify-content: space-between; gap: 18px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.market-summary dd { margin: 0; text-align: right; font-weight: 700; }
+.market-summary > .subtle:last-child { margin-top: 14px; margin-bottom: 0; line-height: 1.5; }
+#executiveInventoryChart, #executivePriceChart { height: 220px; max-height: 220px; }
+.signal-item { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.signal-item p { line-height: 1.5; }
+.signal-item h3 { margin-top: 0; }
+#loadStatus:empty { display: none; }
+#loadStatus { padding: 12px; margin-bottom: 10px; background: #edf4ff; border-radius: 8px; }
+#loadStatus.load-error { color: #8d1e16; background: #fff0ec; }
+#methodology p { line-height: 1.55; max-width: 1050px; }
+.official-context p { line-height: 1.5; }
+@media (max-width: 900px) {
+  .header-actions { max-width: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .header-actions label, .header-actions select { min-width: 0; width: 100%; }
+  .brief-heading { align-items: flex-start; flex-direction: column; }
+  .assessment { font-size: 17px; }
+  .quality-strip { gap: 6px; }
+  .quality-strip > span { flex-basis: 100%; }
+}
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body { background: white; font-size: 10px; }
+  header { padding: 0 0 8px; background: white; }
+  header h1 { font-size: 22px; }
+  header .subtle, .header-actions, .tabs, #loadStatus, .action-button, footer { display: none !important; }
+  main { padding: 8px 0; }
+  .panel { display: none !important; }
+  #executive { display: block !important; }
+  #executive > .grid.two:has(canvas), .official-context, #executiveRegions { display: none !important; }
+  #executive > .box:has(#executiveRegions) { display: none !important; }
+  .quality-strip { padding: 5px 8px; gap: 2px 10px; font-size: 9px; border-radius: 0; }
+  .quality-strip strong { flex-basis: auto; }
+  .box { box-shadow: none; border-radius: 0; margin-bottom: 8px; padding: 10px; break-inside: avoid; }
+  .grid.two { grid-template-columns: 1fr 1fr; gap: 8px; }
+  h2 { font-size: 14px; margin-bottom: 8px; }
+  h3 { font-size: 12px; }
+  .assessment { font-size: 12px; line-height: 1.4; }
+  .subtle, .market-summary dl > div { font-size: 10px; }
+  .market-summary dl > div { padding: 5px 0; }
+  .summary-number { font-size: 24px; }
+  .signal-item { padding: 3px 0; }
+  .signal-item p { margin-bottom: 5px; }
+  .print-notes { font-size: 9px; }
+}

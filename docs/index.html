@@ -4,17 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SG Listing Intelligence</title>
-    <link rel="stylesheet" href="style.css?v=20260629-pg-refresh" />
+    <link rel="stylesheet" href="style.css?v=20261116-executive-v2" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   </head>
   <body>
     <header>
       <div>
-        <p class="eyebrow">Market trend monitoring</p>
-        <h1>SG Listing Intelligence Dashboard</h1>
-        <p class="subtle">A weekly surveillance console for listing-side pressure, deterioration, easing, and unusual project / district signals.</p>
+        <p class="eyebrow">Private housing market monitor</p>
+        <h1>Singapore housing • weekly brief</h1>
+        <p class="subtle">Advertised supply, asking prices and early-warning indicators. Listing observations are not confirmed transactions.</p>
       </div>
       <div class="header-actions">
+        <label>Archive year<select id="yearSelect" aria-label="Archive year"></select></label>
         <label>
           Snapshot week
           <select id="weekSelect"></select>
@@ -39,10 +40,12 @@
     </header>
 
     <main>
-      <section class="cards" id="metricCards"></section>
+      <div id="loadStatus" role="status" aria-live="polite"></div>
+      <section id="qualityStrip" class="quality-strip" aria-label="Data reliability"></section>
 
       <nav class="tabs" aria-label="Dashboard sections">
-        <button class="tab active" data-tab="pulse">District pulse</button>
+        <button class="tab active" data-tab="executive">Executive overview</button>
+        <button class="tab" data-tab="pulse">District pulse</button>
         <button class="tab" data-tab="watchlist">Project watchlist</button>
         <button class="tab" data-tab="overview">Trends & rankings</button>
         <button class="tab" data-tab="project">Project drilldown</button>
@@ -50,11 +53,21 @@
         <button class="tab" data-tab="quality">Data quality</button>
       </nav>
 
-      <section class="panel active" id="pulse">
+      <section class="panel active" id="executive">
+        <article class="box executive-lead"><div class="brief-heading"><h2 id="briefDate">Weekly market assessment</h2><button id="printBrief" class="action-button">Print / save weekly brief</button></div><div id="executiveRead"></div></article>
+        <div id="marketPair" class="grid two"></div>
+        <div class="grid two"><article class="box"><h2>Advertised supply</h2><p class="subtle">Observed and reconstructed advertisements are shown separately. Counts are not unique homes.</p><canvas id="executiveInventoryChart"></canvas></article><article class="box"><h2>Asking-price trend</h2><p class="subtle">Median asking PSF is not mix-adjusted. Weekly cut rates are withheld across gaps.</p><canvas id="executivePriceChart"></canvas></article></div>
+        <article class="box"><h2>Developments requiring attention</h2><div id="executiveSignals"></div></article>
+        <article class="box"><h2>Regional evidence</h2><p class="subtle">Source regional labels are retained; they are not assumed to be verified URA CCR/RCR/OCR boundaries.</p><div id="executiveRegions"></div></article>
+        <article class="box official-context"><h2>Official market context</h2><p>Official transaction prices, volumes, rents, vacancy and supply are not yet integrated. No official-market conclusion is inferred from listing data alone.</p><p class="subtle">Consult <a href="https://www.ura.gov.sg/Corporate/Property/Property-Data" target="_blank" rel="noopener">URA property data</a> and <a href="https://www.ura.gov.sg/reis/index" target="_blank" rel="noopener">REALIS</a>. Record each series’ reference period and publication date before comparing it with this weekly snapshot.</p></article>
+        <p class="subtle print-notes" id="briefProvenance"></p>
+      </section>
+      <section class="panel" id="pulse">
+        <section class="cards" id="metricCards"></section>
         <article class="box" id="pulseNarrative"></article>
         <article class="box">
           <h2>How to read district signals</h2>
-          <p class="subtle explainer"><strong>Pressure</strong> is the composite listing-side stress score for a district: more active inventory, price cuts, stale listings, and duplicate/shadow candidates push it up.</p>
+          <p class="subtle explainer"><strong>Pressure</strong> is the composite listing-side stress score for a district: fixed-reference price-cut and listing-persistence components; duplicate advertising and concentration are separate diagnostics.</p>
           <p class="subtle explainer"><strong>Deterioration</strong> means the district pressure score has risen versus the prior weekly snapshot — a worse listing-side signal, not a transaction-price forecast.</p>
           <p class="subtle explainer"><strong>Easing</strong> means the district pressure score has fallen versus the prior weekly snapshot. Treat it as possible clearing or lower seller stress, not proof that the market has recovered.</p>
         </article>
@@ -92,20 +105,20 @@
 
       <section class="panel" id="watchlist">
         <article class="box">
-          <h2>How to read project signals</h2>
-          <p class="subtle explainer"><strong>Pressure</strong> is the project/postal listing-side stress score: active inventory, price cuts, stale listings, top-agent concentration, and duplicate/shadow candidates.</p>
+          <h2>How to read project signals</h2><p class="subtle">Shortlist: up to 75 largest valid project/postal groups per market and segment. This is not an exhaustive development search; rankings are within this sample.</p>
+          <p class="subtle explainer"><strong>Pressure</strong> is the project/postal listing-side stress score: fixed-reference price-cut and listing-persistence components. Advertisement counts are not unit counts.</p>
           <p class="subtle explainer"><strong>Deterioration</strong> means a project/postal group’s pressure score rose week-on-week, so it may deserve inspection.</p>
           <p class="subtle explainer"><strong>Easing</strong> means the score fell week-on-week. It is a lead for possible clearing, not a confirmed improvement in transacted prices.</p>
-          <p class="subtle explainer"><strong>Low confidence</strong> rows usually have small sample sizes or weaker project matching; use them as triage leads only.</p>
+          <p class="subtle explainer"><strong>Low confidence</strong> rows have inadequate coverage, comparison validity, sample sizes or project matching; use them as triage leads only.</p>
         </article>
         <article class="box">
           <h2>New project stress signals</h2>
-          <p class="subtle explainer">Projects/postal groups newly entering high-pressure territory, jumping sharply in rank, or showing large score increases.</p>
+          <p class="subtle explainer">Adequately sized, matched projects entering a fixed pressure threshold after a comparable observation. Rank changes alone do not trigger alerts.</p>
           <div id="newStressTable"></div>
         </article>
         <article class="box">
           <h2>Persistent project pressure</h2>
-          <p class="subtle explainer">Rows that are high-pressure now and were already high-pressure in the prior snapshot.</p>
+          <p class="subtle explainer">Rows above a fixed score threshold in two comparable observations. Signals are provisional monitoring leads.</p>
           <div id="persistentStressTable"></div>
         </article>
         <div class="grid two">
@@ -114,7 +127,7 @@
             <div id="deteriorationTable"></div>
           </article>
           <article class="box">
-            <h2>Projects possibly easing / clearing</h2>
+            <h2>Projects with lower pressure</h2>
             <div id="easingTable"></div>
           </article>
         </div>
@@ -169,7 +182,7 @@
             The mid-level read: broad enough to avoid project-level noise, but more actionable than a whole-market average. Use this as the first triage layer, then drill into districts or projects only where a region is moving.
           </p>
           <p class="subtle formula">
-            Region score: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 25% duplicate candidates.
+            Fixed-reference score. See the score methodology and component contributions in Data quality. This is an exploratory indicator, not a calibrated probability of stress.
           </p>
           <div id="regionTable"></div>
         </article>
@@ -179,17 +192,17 @@
             A more granular seller-stress / listing-oversupply signal for the selected week, market, and segment. Use after the region table points to where movement is concentrated.
           </p>
           <p class="subtle formula">
-            District score: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 25% duplicate candidates.
+            Fixed-reference score. See the score methodology and component contributions in Data quality. This is an exploratory indicator, not a calibrated probability of stress.
           </p>
           <div id="districtTable"></div>
         </article>
         <article class="box">
           <h2>Project / postal pressure ranking</h2>
           <p class="subtle explainer">
-            Actual project rows are used where reliable. Title-only rows fall back to postal-code grouping where possible. Benchmark gaps compare project/postal pressure against the selected district.
+            Actual project rows are used where reliable. Ambiguous project/location history groups are withheld. Title-only rows fall back to postal-code grouping where possible. Benchmark gaps compare project/postal pressure against the selected district.
           </p>
           <p class="subtle formula">
-            Project/postal score: 10% active-listing scale + 35% price-cut rate + 30% stale-60d share + 10% top-agent share + 15% duplicate candidates.
+            Fixed-reference score. See the score methodology and component contributions in Data quality. This is an exploratory indicator, not a calibrated probability of stress.
           </p>
           <div id="projectTable"></div>
         </article>
@@ -204,7 +217,7 @@
             </div>
             <label class="project-picker">
               Project search
-              <input id="projectSearch" type="search" placeholder="Type project name or postal code…" autocomplete="off" />
+              <input id="projectSearch" type="search" placeholder="Search the project shortlist…" autocomplete="off" />
               <select id="projectSelect" size="8"></select>
             </label>
           </div>
@@ -251,11 +264,11 @@
 
       <section class="panel" id="quality">
         <article class="box">
-          <h2>Build metadata</h2>
+          <h2>Definitions and limitations</h2><div id="methodology"></div></article><article class="box"><h2>Build metadata</h2>
           <div id="metadataTable"></div>
         </article>
         <article class="box">
-          <h2>Snapshot coverage</h2>
+          <h2>Snapshot coverage</h2><p class="subtle">Observed versus imputed inventory, comparison intervals and source quality. Historical data are loaded on demand.</p>
           <div id="coverageTable"></div>
         </article>
       </section>
@@ -265,6 +278,6 @@
       <span>Generated from compact analytics tables. No raw portal payloads are embedded. Signals are monitoring leads, not confirmed transaction outcomes.</span>
     </footer>
 
-    <script src="app.js?v=20260629-pg-refresh"></script>
+    <script src="app.js?v=20261116-executive-v2"></script>
   </body>
 </html>

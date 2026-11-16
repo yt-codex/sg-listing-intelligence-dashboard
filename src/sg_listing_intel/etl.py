@@ -54,20 +54,20 @@ WITH eligible_snapshot_weeks AS (
         END AS property_segment,
         CASE
             WHEN dp.project_uid_type = 'project_id' AND NULLIF(TRIM(dp.project_name), '') IS NOT NULL THEN li.project_uid
-            WHEN NULLIF(TRIM(li.postal_code), '') IS NOT NULL THEN 'postal:' || TRIM(li.postal_code)
+            WHEN NULLIF(NULLIF(TRIM(li.postal_code), ''), '000000') IS NOT NULL THEN 'postal:' || TRIM(li.postal_code)
             ELSE 'listing:' || s.listing_id
         END AS project_uid,
         CASE
             WHEN dp.project_uid_type = 'project_id' AND NULLIF(TRIM(dp.project_name), '') IS NOT NULL THEN TRIM(dp.project_name)
-            WHEN NULLIF(TRIM(li.postal_code), '') IS NOT NULL THEN 'Postal ' || TRIM(li.postal_code)
+            WHEN NULLIF(NULLIF(TRIM(li.postal_code), ''), '000000') IS NOT NULL THEN 'Postal ' || TRIM(li.postal_code)
             ELSE COALESCE(NULLIF(TRIM(li.title), ''), 'Unknown listing title')
         END AS project_name,
         CASE
             WHEN dp.project_uid_type = 'project_id' AND NULLIF(TRIM(dp.project_name), '') IS NOT NULL THEN 'actual_project'
-            WHEN NULLIF(TRIM(li.postal_code), '') IS NOT NULL THEN 'postal_code'
+            WHEN NULLIF(NULLIF(TRIM(li.postal_code), ''), '000000') IS NOT NULL THEN 'postal_code'
             ELSE 'listing_title'
         END AS project_group_type,
-        NULLIF(TRIM(li.postal_code), '') AS postal_code,
+        NULLIF(NULLIF(TRIM(li.postal_code), ''), '000000') AS postal_code,
         li.full_address,
         li.district_code,
         COALESCE(NULLIF(TRIM(li.district_text), ''), 'Unknown district') AS district_text,
@@ -418,11 +418,8 @@ WITH agent_counts AS (
 SELECT
     b.*,
     ROUND(
-        COALESCE(10.0 * b.active_listings / NULLIF(w.max_active_listings, 0), 0)
-        + COALESCE(35.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0), 0)
-        + 30.0 * b.stale_60d_share
-        + 10.0 * b.top_agent_share
-        + COALESCE(15.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0), 0),
+        70.0 * MIN(MAX(COALESCE(b.price_cut_rate, 0), 0) / 0.10, 1.0)
+        + 30.0 * b.stale_60d_share,
         2
     ) AS pressure_score
 FROM base b
@@ -490,10 +487,8 @@ WITH disappeared AS (
 SELECT
     b.*,
     ROUND(
-        COALESCE(10.0 * b.active_listings / NULLIF(w.max_active_listings, 0), 0)
-        + COALESCE(35.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0), 0)
-        + 30.0 * b.stale_60d_share
-        + COALESCE(25.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0), 0),
+        70.0 * MIN(MAX(COALESCE(b.price_cut_rate, 0), 0) / 0.10, 1.0)
+        + 30.0 * b.stale_60d_share,
         2
     ) AS pressure_score
 FROM base b
@@ -557,10 +552,8 @@ WITH disappeared AS (
 SELECT
     b.*,
     ROUND(
-        COALESCE(10.0 * b.active_listings / NULLIF(w.max_active_listings, 0), 0)
-        + COALESCE(35.0 * b.price_cut_rate / NULLIF(w.max_price_cut_rate, 0), 0)
-        + 30.0 * b.stale_60d_share
-        + COALESCE(25.0 * b.duplicate_candidate_listings / NULLIF(w.max_duplicate_candidate_listings, 0), 0),
+        70.0 * MIN(MAX(COALESCE(b.price_cut_rate, 0), 0) / 0.10, 1.0)
+        + 30.0 * b.stale_60d_share,
         2
     ) AS pressure_score
 FROM base b
@@ -962,7 +955,7 @@ def build_analytics_db(source: Path, output: Path) -> None:
     with sqlite3.connect(output) as con:
         con.execute("PRAGMA journal_mode=WAL")
         con.execute("PRAGMA synchronous=NORMAL")
-        con.execute("ATTACH DATABASE ? AS source", (str(source),))
+        con.execute("ATTACH DATABASE ? AS source", (f"file:{source.resolve()}?mode=ro",))
         _prepare_source_helpers(con)
 
         con.executescript(PANEL_SQL)
@@ -993,7 +986,7 @@ def build_analytics_db(source: Path, output: Path) -> None:
                 COUNT(*) AS listing_week_rows
             FROM listing_week_panel
             """,
-            (str(source),),
+            (str(source.resolve()),),
         )
         con.commit()
 

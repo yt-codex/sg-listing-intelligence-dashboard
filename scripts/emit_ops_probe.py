@@ -145,6 +145,28 @@ def build_probe(root: Path, current: datetime) -> dict[str, Any]:
         if status == "FAIL":
             warnings.append(f"{key} export has no rows")
 
+    if manifest.get("schemaVersion") == 2:
+        assets = root / "docs" / "assets"
+        required = [assets / "weeks" / f"{latest_week}.json",
+                    assets / "diagnostics" / f"{latest_week}.json"]
+        required += [assets / "years" / f"{year}.json" for year in manifest.get("years", [])]
+        missing = [str(path.relative_to(assets)) for path in required if not path.exists()]
+        checks.append(check("lazy data shards", "FAIL" if missing else "OK",
+                            f"Missing: {missing}" if missing else "Latest detail, diagnostics and archive indexes present"))
+        if missing:
+            warnings.append("required data shards missing")
+        initial_budget = manifest.get("sizes", {}).get("budgetsRawBytes", {}).get("initial", 2_500_000)
+        checks.append(check("initial payload budget", "OK" if data_path.stat().st_size <= initial_budget else "FAIL",
+                            f"{data_path.stat().st_size:,} raw bytes; budget {initial_budget:,}", data_path.stat().st_size))
+        current_rows = [r for r in data.get("market", []) if r.get("snapshot_week_id") == latest_week
+                        and r.get("property_segment") == "PRIVATE_NON_LANDED"]
+        ineligible = [r.get("listing_type") for r in current_rows if not r.get("rate_comparison_eligible")]
+        checks.append(check("market inference comparability", "WARN" if ineligible else "OK",
+                            f"Weekly cut-rate direction suppressed for {', '.join(ineligible)}" if ineligible
+                            else "Consecutive observed weekly comparison windows available; portal completeness unverified"))
+        if ineligible:
+            warnings.append("Operational refresh succeeded, but weekly rate interpretation is restricted by coverage or comparison gaps")
+
     if index_path.exists() and app_path.exists():
         checks.append(check("static app assets", "OK", "index.html and app.js are present"))
     else:
@@ -160,7 +182,7 @@ def build_probe(root: Path, current: datetime) -> dict[str, Any]:
         "freshness": {
             "max_date": latest_date_text,
             "lag_seconds": lag_seconds,
-            "stale": status in {"WARN", "FAIL"} if latest_date_text else None,
+            "stale": lag_seconds / 86_400 > WARN_SNAPSHOT_AGE_DAYS if lag_seconds is not None else None,
         },
         "row_counts": row_counts,
         "schema_hash": sha256_file(app_path),
